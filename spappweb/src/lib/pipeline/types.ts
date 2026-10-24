@@ -1,0 +1,952 @@
+export type SolicitudEstado = "pendiente" | "aceptada" | "rechazada";
+export type ContractStatus = "borrador" | "completado" | "firmado";
+export type VisitaEstado =
+  | "pendiente_asignacion"
+  | "asignada"
+  | "completada"
+  | "cancelada";
+export type MotoCompraEstado =
+  | "pendiente_pago"
+  | "lista_retiro"
+  | "entregada"
+  | "saldada"
+  | "cancelada";
+export type VendidaEstadoFisico =
+  | "activa"
+  | "recogida"
+  | "robada"
+  | "en_transito"
+  | "en_patio";
+export type FrecuenciaPago = "diario" | "semanal" | "quincenal" | "mensual";
+export type TarifaEstado = "pendiente" | "pagada" | "vencida" | "refinanciada";
+export type MorosoEstado = "activo" | "regularizado";
+export type MotoRecogerEstado =
+  | "pendiente"
+  | "asignada"
+  | "recogida"
+  | "cancelada";
+
+export type PipelineStepId =
+  | "credito"
+  | "contrato"
+  | "visita"
+  | "moto"
+  | "pago"
+  | "entrega";
+
+export type StepVisualState =
+  | "completado"
+  | "actual"
+  | "pendiente"
+  | "bloqueado"
+  | "error";
+
+export interface PipelineStep {
+  id: PipelineStepId;
+  label: string;
+  state: StepVisualState;
+  adminActionRequired: boolean;
+}
+
+export interface UserRow {
+  id: number;
+  user: string;
+  /** Cliente en vigilancia constante. */
+  vigilado?: boolean;
+  /** Motivo de la vigilancia. */
+  nota_vigilancia?: string | null;
+}
+
+export interface VisitaUbicacionVerificada {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  captured_at: string;
+}
+
+/** GPS al enviar solicitud web (users_documents.ubicacion_solicitud). */
+export type SolicitudUbicacion = VisitaUbicacionVerificada;
+
+export interface UserDocumentRow {
+  id: number;
+  user_id: number;
+  estado_solicitud: SolicitudEstado;
+  betado: boolean;
+  motivo_rechazo: string | null;
+  document_front_url: string | null;
+  document_back_url: string | null;
+  selfie_url: string | null;
+  ubicacion_solicitud: SolicitudUbicacion | null;
+  /** Quién captó la solicitud (slug de referral). */
+  referral_source: string | null;
+  hora_actualizacion: string | null;
+  created_at: string;
+}
+
+export interface DigitalContractRow {
+  id: string;
+  user_id: number;
+  users_documents_id: number | null;
+  status: ContractStatus;
+  hoja_vida_data: Record<string, unknown>;
+  contrato_data: Record<string, unknown>;
+  admin_data: Record<string, unknown>;
+  signature_path: string | null;
+  hoja_vida_pdf_path: string | null;
+  contrato_pdf_path: string | null;
+  signed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VisitaEvidenciaFoto {
+  url: string;
+  captured_at: string;
+}
+
+export interface VisitaEvidenciaVideo {
+  url: string;
+  captured_at: string;
+  duration_sec?: number;
+}
+
+export interface VisitadorRow {
+  id: number;
+  nombre: string;
+  foto_url: string | null;
+  telefono: string | null;
+  activo: boolean;
+  user_id: number | null;
+  users?: { id: number; user: string } | { id: number; user: string }[] | null;
+}
+
+export interface VisitaRow {
+  id: string;
+  user_id: number;
+  digital_contract_id: string | null;
+  visitador_id: number | null;
+  estado: VisitaEstado;
+  cliente_nombre: string | null;
+  cliente_celular: string | null;
+  direccion_visita: string | null;
+  barrio: string | null;
+  fecha_programada: string | null;
+  notas: string | null;
+  evidencia_fotos: VisitaEvidenciaFoto[];
+  evidencia_videos: VisitaEvidenciaVideo[];
+  ubicacion_verificada: VisitaUbicacionVerificada | null;
+  fecha_completada: string | null;
+  notas_visita: string | null;
+  visitadores: VisitadorRow | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Fila de detalle en métricas de Equipo (visitas asignadas/completadas). */
+export interface EquipoVisitaDetalleItem {
+  id: string;
+  userId: number;
+  displayName: string;
+  selfieUrl: string | null;
+  referralLabel: string;
+  visitadorNombre: string | null;
+}
+
+export interface EquipoVisitasDetalle {
+  asignadas: EquipoVisitaDetalleItem[];
+  completadas: EquipoVisitaDetalleItem[];
+}
+
+export interface UserMotoCompraRow {
+  id: string;
+  user_id: number;
+  bike_id: number | null;
+  garaje_moto_id: string | null;
+  modelo: string;
+  color: string;
+  frecuencia_pago: FrecuenciaPago;
+  cuota_inicial_monto: number;
+  monto_cuota_periodo: number;
+  /** Monto de cuota adelantada en el primer pago (puede ser 0 o parcial). */
+  monto_cuota_adelantada?: number;
+  monto_visita_monto: number;
+  monto_total_primer_pago: number;
+  estado: MotoCompraEstado;
+  pago_inicial_confirmado: boolean;
+  pago_cuota_confirmado: boolean;
+  pago_visita_confirmado: boolean;
+  placa: string | null;
+  chasis: string | null;
+  /** Serial / número de motor (distinto del chasis). */
+  serial_motor?: string | null;
+  referencia: string | null;
+  fecha_entrega: string | null;
+  /** Estado físico en calle (activa, recogida, …). */
+  estado_fisico?: VendidaEstadoFisico | null;
+  doc_tarjeta_propiedad_path: string | null;
+  doc_soat_path: string | null;
+  doc_tecno_path: string | null;
+  seleccionado_at: string;
+  admin_data?: {
+    entrega_antes_visita?: boolean;
+    cobra_cuota_adelantada?: boolean;
+    condicion?: "nueva" | "segunda_mano" | "recuperada";
+    /** @deprecated Preferir columna serial_motor. */
+    serial_motor?: string | null;
+    hora_entrega?: string;
+    nota_entrega?: string;
+    /** Contrato de renovación (etiqueta en ficha y PDF). */
+    es_renovacion?: boolean;
+    /** Plazo del contrato en días (override del año por defecto). */
+    dias_contrato?: number;
+    /** Conductor autorizado (puede ser distinto al titular). */
+    conductor?: {
+      nombre?: string;
+      cedula?: string;
+      celular?: string | null;
+      notas?: string | null;
+      cedula_url?: string | null;
+      foto_url?: string | null;
+      updated_at?: string;
+    };
+  };
+}
+
+export interface VendidaMotoRow extends UserMotoCompraRow {
+  estado_fisico: VendidaEstadoFisico;
+  users?: { id: number; user: string } | { id: number; user: string }[] | null;
+  morosos?: { estado: MorosoEstado; dias_atraso: number; monto_adeudado?: number } | null;
+  motos_para_recoger?: {
+    estado: MotoRecogerEstado;
+    dias_atraso?: number;
+  } | null;
+  garaje_motos?: { id: string }[] | null;
+  atraso?: AtrasoSnapshot | null;
+  selfieUrl?: string | null;
+  motoImagenUrl?: string | null;
+}
+
+export type AtrasoEstado = "al_dia" | "vencido" | "moroso";
+
+export interface AtrasoSnapshot {
+  dias_atraso: number;
+  monto_adeudado: number;
+  estado: AtrasoEstado;
+}
+
+export const VENDIDA_ESTADO_FISICO_LABELS: Record<VendidaEstadoFisico, string> =
+  {
+    activa: "Activa",
+    recogida: "Recogida",
+    robada: "Robada",
+    en_transito: "En tránsito",
+    en_patio: "En patio",
+  };
+
+export interface TrackingLocation {
+  lat?: number;
+  lng?: number;
+  accuracy?: number;
+  captured_at?: string;
+}
+
+export interface UserTrackingRow {
+  id: number;
+  user_id: number;
+  seguimiento: boolean;
+  ubicacion_1?: TrackingLocation | null;
+}
+
+export type TarifaTipo = "cuota" | "multa";
+
+export interface TarifaPagadaRow {
+  id: string;
+  user_moto_compra_id: string;
+  user_id: number;
+  numero_periodo: number;
+  fecha_vencimiento: string;
+  monto_esperado: number;
+  monto_pagado: number | null;
+  estado: TarifaEstado;
+  pagada_at: string | null;
+  confirmada_por: string | null;
+  notas: string | null;
+  tipo?: TarifaTipo | null;
+  motivo?: string | null;
+}
+
+/** Talonario diario de un producto a crédito (aparte de tarifas de moto). */
+export interface TarifaProductoCreditoRow {
+  id: string;
+  compra_producto_credito_id: string;
+  user_id: number;
+  numero_periodo: number;
+  fecha_vencimiento: string;
+  monto_esperado: number;
+  monto_pagado: number | null;
+  estado: TarifaEstado;
+  pagada_at: string | null;
+  confirmada_por: string | null;
+  notas: string | null;
+}
+
+export interface MorosoRow {
+  id: string;
+  user_moto_compra_id: string;
+  user_id: number;
+  tarifa_vencida_id: string | null;
+  dias_atraso: number;
+  monto_adeudado: number;
+  estado: MorosoEstado;
+  fecha_ingreso: string;
+}
+
+export interface MotoParaRecogerRow {
+  id: string;
+  user_moto_compra_id: string;
+  moroso_id: string | null;
+  user_id: number;
+  dias_atraso: number;
+  monto_adeudado: number;
+  estado: MotoRecogerEstado;
+  fecha_ingreso: string;
+  fecha_recogida: string | null;
+  notas: string | null;
+}
+
+export type GarajeOrigen = "manual" | "recuperacion";
+export type GarajeCondicion = "nueva" | "segunda_mano" | "recuperada";
+export type GarajeMotoEstado =
+  | "en_garaje"
+  | "retenida"
+  | "en_mantenimiento"
+  | "disponible"
+  | "vendida"
+  | "devuelta"
+  | "baja";
+
+export interface GarajeParqueaderoRow {
+  id: number;
+  nombre: string;
+  slug: string;
+  activo: boolean;
+  orden: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GarajeMotoRow {
+  id: string;
+  parqueadero_id: number | null;
+  parqueadero_nombre: string | null;
+  placa: string | null;
+  placa_foto_url: string | null;
+  referencia: string;
+  modelo: string;
+  color: string;
+  origen: GarajeOrigen;
+  condicion: GarajeCondicion;
+  estado: GarajeMotoEstado;
+  moto_para_recoger_id: string | null;
+  user_moto_compra_id: string | null;
+  cuota_inicial: number | null;
+  cuota_diaria: number | null;
+  monto_visita: number | null;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+  /** Desde join con motos_para_recoger (solo recuperadas). */
+  fecha_recogida?: string | null;
+  /** Cliente de origen (compra vinculada). */
+  origen_user_id?: number | null;
+}
+
+/** Unidad de garaje marcada vendida + datos de la compra/cliente. */
+export interface GarajeMotoVendidaRow {
+  id: string;
+  placa: string | null;
+  referencia: string;
+  modelo: string;
+  color: string;
+  condicion: GarajeCondicion;
+  fechaVenta: string | null;
+  selfieUrl: string | null;
+  clienteNombre: string | null;
+}
+
+export interface GarajeMantenimientoItemRow {
+  id: string;
+  garaje_moto_id: string;
+  producto_id: number;
+  cantidad: number;
+  costo_unitario: number;
+  notas: string | null;
+  created_at: string;
+  created_by: string | null;
+  producto_nombre?: string | null;
+  producto_sku?: string | null;
+}
+
+export const GARAJE_CONDICION_LABELS: Record<GarajeCondicion, string> = {
+  nueva: "Nueva",
+  segunda_mano: "Segunda mano",
+  recuperada: "Recuperada",
+};
+
+export const GARAJE_ORIGEN_LABELS: Record<GarajeOrigen, string> = {
+  manual: "Manual",
+  recuperacion: "Recuperación",
+};
+
+export const GARAJE_ESTADO_LABELS: Record<GarajeMotoEstado, string> = {
+  en_garaje: "En garaje",
+  retenida: "Retenida (plazo cliente)",
+  en_mantenimiento: "En mantenimiento",
+  disponible: "Disponible",
+  vendida: "Vendida",
+  devuelta: "Devuelta al cliente",
+  baja: "Baja",
+};
+
+export interface RentingResumen {
+  totalPagado: number;
+  totalAdeudado: number;
+  /** Suma fraccional de cuotas cubiertas (ej. 2.5). */
+  cuotasPagadas: number;
+  cuotasPendientes: number;
+  cuotasVencidas: number;
+  diasAtraso: number | null;
+  proximoVencimiento: string | null;
+}
+
+export interface CongelamientoActivo {
+  /** Días de la última congelación aplicada. */
+  dias: number;
+  /** Días que aún restan del periodo congelado (redondeado hacia arriba). */
+  diasRestantes: number;
+  /** Fecha ISO en la que expira el congelamiento. */
+  hasta: string;
+}
+
+export interface PagoHistorialRow {
+  id: string;
+  fecha: string;
+  monto: number;
+  montoEsperado: number | null;
+  referencia: string | null;
+  contexto_pago: ContextoPago | null;
+  contextoDetalle: string | null;
+  numeroPeriodo: number | null;
+  cuotasCubiertas: number;
+  variacionLabel: string;
+  variacionTone: "menor" | "mayor" | "exacto";
+  comprobante_url: string | null;
+}
+
+export interface ClientPipeline {
+  user: UserRow;
+  document: UserDocumentRow | null;
+  contract: DigitalContractRow | null;
+  visita: VisitaRow | null;
+  compra: UserMotoCompraRow | null;
+  tracking: UserTrackingRow | null;
+  tarifas: TarifaPagadaRow[];
+  moroso: MorosoRow | null;
+  recoger: MotoParaRecogerRow | null;
+  atraso: AtrasoSnapshot | null;
+  congelamiento: CongelamientoActivo | null;
+  rentingResumen: RentingResumen | null;
+  pagosHistorial: PagoHistorialRow[];
+  pagos: PagoRow[];
+  /** tarifa_id → URL del comprobante de pago (si se subió foto). */
+  comprobanteByTarifaId: Record<string, string>;
+  compraProductosCredito: CompraProductoCreditoRow[];
+  /** Talonario de productos a crédito (no incluye tarifas de moto). */
+  tarifasProductoCredito: TarifaProductoCreditoRow[];
+  steps: PipelineStep[];
+  currentAdminStep: PipelineStepId | null;
+  displayName: string;
+  /** Cliente marcado para vigilancia constante. */
+  vigilado: boolean;
+  /** Motivo de la vigilancia (si aplica). */
+  notaVigilancia: string | null;
+}
+
+export type InboxQueueId =
+  | "creditos"
+  | "clientes_guillen"
+  | "visitas_sin_asignar"
+  | "visitas_programadas"
+  | "pagos"
+  | "retiro"
+  | "entrega"
+  | "morosos"
+  | "recoger"
+  | "solicitudes_taller";
+
+export interface InboxQueue {
+  id: InboxQueueId;
+  label: string;
+  description: string;
+  count: number;
+}
+
+export interface InboxListItem {
+  userId: number;
+  username: string;
+  displayName: string;
+  subtitle: string;
+  queueId: InboxQueueId;
+  cedula?: string | null;
+  celular?: string | null;
+  selfieUrl?: string | null;
+  motoImagenUrl?: string | null;
+  createdAt?: string;
+  estadoSolicitud?: string;
+  referralSource?: string | null;
+  documentId?: number | null;
+}
+
+export interface ClienteFacturacion {
+  userId: number;
+  clienteNombre: string;
+  clienteCedula: string;
+  compraId: string | null;
+  motoModelo: string | null;
+  motoColor: string | null;
+  placa: string | null;
+  cuotaInicial: number | null;
+  cuotaAdelantada: number | null;
+  montoVisita: number | null;
+  totalPrimerPago: number | null;
+}
+
+export interface ClientSearchResult {
+  userId: number;
+  username: string;
+  displayName: string;
+  cedula: string | null;
+  placa: string | null;
+  motoLabel: string | null;
+  /** Compra activa asociada (para cancelar / acciones). */
+  compraId: string | null;
+  compraEstado: MotoCompraEstado | null;
+  cuotasPagadas: number;
+  diasAtraso: number;
+  /** Saldo vencido del contrato (vista atrasos). */
+  montoAdeudado: number;
+  /** Moto ya marcada como recogida. */
+  motoRecogida: boolean;
+  /** Elegible para botón "Recoger moto!". */
+  puedeMarcarRecogida: boolean;
+  /** Cliente en vigilancia constante. */
+  vigilado: boolean;
+  /** Motivo de la vigilancia. */
+  notaVigilancia: string | null;
+  matchLabel: string;
+  seleccionadoAt: string | null;
+  /** Fecha de entrega / venta de la moto (ISO date). */
+  fechaVenta: string | null;
+  selfieUrl: string | null;
+  motoImagenUrl: string | null;
+  /** Quién captó al cliente (referral / punto de venta, …). */
+  referralLabel: string;
+}
+
+export interface BikeRow {
+  id: number;
+  modelo: string;
+  color: string;
+  imagen_url: string | null;
+  stock: number;
+  cuota_inicial: number;
+  cuota_diaria: number;
+  monto_visita: number;
+  precio_venta: number | null;
+  descripcion: string | null;
+  activo: boolean;
+}
+
+export const FRECUENCIA_LABELS: Record<FrecuenciaPago, string> = {
+  diario: "Diario",
+  semanal: "Semanal",
+  quincenal: "Quincenal",
+  mensual: "Mensual",
+};
+
+export const VISITA_ESTADO_LABELS: Record<VisitaEstado, string> = {
+  pendiente_asignacion: "Sin asignar",
+  asignada: "Programada",
+  completada: "Completada",
+  cancelada: "Cancelada",
+};
+
+export const COMPRA_ESTADO_LABELS: Record<MotoCompraEstado, string> = {
+  pendiente_pago: "Pendiente de pago",
+  lista_retiro: "Lista para retiro",
+  entregada: "Entregada",
+  saldada: "Saldada",
+  cancelada: "Cancelada",
+};
+
+export const TARIFA_ESTADO_LABELS: Record<TarifaEstado, string> = {
+  pendiente: "Pendiente",
+  pagada: "Pagada",
+  vencida: "Vencida",
+  refinanciada: "Refinanciada",
+};
+
+export type ContextoPago =
+  | "tarifa"
+  | "inicial"
+  | "cuota_adelantada"
+  | "visita"
+  | "liquidacion"
+  | "producto_inicial"
+  | "producto_cuota";
+export type MedioPagoAdmin =
+  | "nequi_nicolas"
+  | "davivienda"
+  | "efectivo"
+  | "datafono";
+
+export type MedioPagoAdminLegacy =
+  | "nequi_pedro"
+  | "nequi_titular";
+
+export type MedioPagoAdminStored = MedioPagoAdmin | MedioPagoAdminLegacy;
+
+export const MEDIO_PAGO_ADMIN_OPTIONS: MedioPagoAdmin[] = [
+  "nequi_nicolas",
+  "davivienda",
+  "efectivo",
+  "datafono",
+];
+export type BancoOrigen =
+  | "nequi"
+  | "davivienda"
+  | "bancolombia"
+  | "banco_bogota"
+  | "pse"
+  | "otro";
+export type PagoEstado = "pendiente_confirmacion" | "confirmado" | "rechazado";
+
+export interface PagoRow {
+  id: string;
+  user_moto_compra_id: string;
+  user_id: number;
+  monto: number;
+  dias_cubiertos: number | null;
+  medio_pago_usuario: "nequi" | "davivienda" | "efectivo" | "datafono";
+  medio_pago_admin: MedioPagoAdminStored | null;
+  referencia: string | null;
+  comprobante_url: string | null;
+  origen: "usuario" | "admin";
+  estado: PagoEstado;
+  reportado_at: string;
+  confirmado_at: string | null;
+  confirmado_por: string | null;
+  fecha_comprobante: string | null;
+  tarifa_objetivo_id: string | null;
+  compra_producto_credito_id?: string | null;
+  contexto_pago: ContextoPago | null;
+  cobro_grupo_id?: string | null;
+  notas_admin: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const CONTEXTO_PAGO_LABELS: Record<ContextoPago, string> = {
+  tarifa: "Tarifa de renting",
+  inicial: "Cuota inicial",
+  cuota_adelantada: "Cuota adelantada",
+  visita: "Visita domiciliaria",
+  liquidacion: "Liquidación de crédito",
+  producto_inicial: "Inicial producto a crédito",
+  producto_cuota: "Cuota producto a crédito",
+};
+
+export const MEDIO_PAGO_ADMIN_LABELS: Record<MedioPagoAdminStored, string> = {
+  nequi_nicolas: "Nequi — Nicolás",
+  nequi_pedro: "Nequi — Pedro",
+  nequi_titular: "Nequi — CONFIGURAR",
+  davivienda: "Davivienda",
+  efectivo: "Efectivo",
+  datafono: "Datáfono",
+};
+
+export const BANCO_ORIGEN_LABELS: Record<BancoOrigen, string> = {
+  nequi: "Nequi",
+  davivienda: "Davivienda / Daviplata",
+  bancolombia: "Bancolombia",
+  banco_bogota: "Banco de Bogotá",
+  pse: "PSE / Bre-B",
+  otro: "Otro banco",
+};
+
+export type SolicitudTallerTipo = "repuestos" | "reparacion" | "cambio_aceite";
+export type SolicitudTallerEstado =
+  | "pendiente"
+  | "en_proceso"
+  | "completada"
+  | "cancelada";
+
+export interface InventarioCategoriaRow {
+  id: number;
+  nombre: string;
+  slug: string;
+  descripcion: string | null;
+  activo: boolean;
+  orden: number;
+}
+
+export type InventarioUbicacion = "Soluciones" | "Bera" | "Bodega";
+
+export const INVENTARIO_UBICACIONES: InventarioUbicacion[] = [
+  "Soluciones",
+  "Bera",
+  "Bodega",
+];
+
+export function labelUbicacion(ubicacion: InventarioUbicacion): string {
+  if (ubicacion === "Soluciones") return "CONFIGURAR";
+  return ubicacion;
+}
+
+export function formatUbicacionConGaveta(
+  ubicacion: InventarioUbicacion,
+  gaveta?: string | null,
+): string {
+  const base = labelUbicacion(ubicacion);
+  if (ubicacion === "Bodega" && gaveta?.trim()) {
+    return `${base} · Gaveta ${gaveta.trim()}`;
+  }
+  return base;
+}
+
+export interface InventarioStockUbicacionRow {
+  producto_id: number;
+  ubicacion: InventarioUbicacion;
+  cantidad: number;
+  gaveta?: string | null;
+  updated_at?: string;
+}
+
+export interface InventarioTrasladoRow {
+  id: string;
+  producto_id: number;
+  desde: InventarioUbicacion;
+  hacia: InventarioUbicacion;
+  cantidad: number;
+  autor: string;
+  nota: string | null;
+  gaveta_destino: string | null;
+  created_at: string;
+}
+
+/** Stocks normalizados (siempre las 3 sedes). */
+export function normalizeProductoStocks(
+  product: Pick<InventarioProductoRow, "id" | "stock" | "ubicacion" | "gaveta" | "stocks">,
+): InventarioStockUbicacionRow[] {
+  const byLoc = new Map<InventarioUbicacion, InventarioStockUbicacionRow>();
+  for (const u of INVENTARIO_UBICACIONES) {
+    byLoc.set(u, {
+      producto_id: product.id,
+      ubicacion: u,
+      cantidad: 0,
+      gaveta: u === "Bodega" ? product.gaveta ?? null : null,
+    });
+  }
+  if (product.stocks?.length) {
+    for (const s of product.stocks) {
+      byLoc.set(s.ubicacion, {
+        producto_id: product.id,
+        ubicacion: s.ubicacion,
+        cantidad: Math.max(0, Number(s.cantidad) || 0),
+        gaveta: s.ubicacion === "Bodega" ? s.gaveta ?? null : null,
+        updated_at: s.updated_at,
+      });
+    }
+  } else {
+    const loc = product.ubicacion ?? "Soluciones";
+    byLoc.set(loc, {
+      producto_id: product.id,
+      ubicacion: loc,
+      cantidad: Math.max(0, Number(product.stock) || 0),
+      gaveta: loc === "Bodega" ? product.gaveta ?? null : null,
+    });
+  }
+  return INVENTARIO_UBICACIONES.map((u) => byLoc.get(u)!);
+}
+
+export function stockEnUbicacion(
+  product: Pick<InventarioProductoRow, "id" | "stock" | "ubicacion" | "gaveta" | "stocks">,
+  ubicacion: InventarioUbicacion,
+): number {
+  return (
+    normalizeProductoStocks(product).find((s) => s.ubicacion === ubicacion)
+      ?.cantidad ?? 0
+  );
+}
+
+export function defaultUbicacionConStock(
+  product: Pick<InventarioProductoRow, "id" | "stock" | "ubicacion" | "gaveta" | "stocks">,
+): InventarioUbicacion | null {
+  const stocks = normalizeProductoStocks(product);
+  const prefer = stocks.find((s) => s.ubicacion === "Soluciones" && s.cantidad > 0);
+  if (prefer) return "Soluciones";
+  const any = stocks.find((s) => s.cantidad > 0);
+  return any?.ubicacion ?? null;
+}
+
+export type InventarioProductoNovedadTipo =
+  | "anotacion"
+  | "edicion"
+  | "eliminacion"
+  | "creacion"
+  | "traslado";
+
+export interface InventarioProductoNovedadRow {
+  id: string;
+  producto_id: number;
+  tipo: InventarioProductoNovedadTipo;
+  autor: string;
+  contenido: string;
+  detalle: {
+    cambios?: string[];
+    traslado_id?: string;
+    desde?: InventarioUbicacion;
+    hacia?: InventarioUbicacion;
+    cantidad?: number;
+  } | null;
+  created_at: string;
+}
+
+export interface InventarioProductoRow {
+  id: number;
+  categoria_id: number;
+  sku: string;
+  nombre: string;
+  descripcion: string | null;
+  precio: number;
+  costo: number;
+  stock: number;
+  stock_minimo: number;
+  ubicacion?: InventarioUbicacion;
+  gaveta?: string | null;
+  stocks?: InventarioStockUbicacionRow[];
+  editado_por?: string | null;
+  motivo_edicion?: string | null;
+  editado_at?: string | null;
+  eliminado_por?: string | null;
+  motivo_eliminacion?: string | null;
+  eliminado_at?: string | null;
+  imagen_url: string | null;
+  compatible_modelos: string[];
+  activo: boolean;
+  inventario_categorias?: InventarioCategoriaRow | null;
+}
+
+export interface ProductoCreditoRow {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  cuota_inicial: number;
+  cuota_diaria: number;
+  plazo_dias: number | null;
+  imagen_url: string | null;
+  activo: boolean;
+  orden: number;
+}
+
+export interface CompraProductoCreditoRow {
+  id: string;
+  user_moto_compra_id: string;
+  user_id: number;
+  producto_credito_id: number | null;
+  inventario_producto_id?: number | null;
+  ubicacion?: string | null;
+  nombre: string;
+  cuota_inicial_monto: number;
+  cuota_diaria_monto: number;
+  plazo_dias: number | null;
+  cantidad: number;
+  notas: string | null;
+  created_at: string;
+  productos_credito?: ProductoCreditoRow | null;
+}
+
+export interface SolicitudRepuestoItemRow {
+  id: string;
+  solicitud_id: string;
+  producto_id: number;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal: number;
+  inventario_productos?: InventarioProductoRow | null;
+}
+
+export interface SolicitudTallerRow {
+  id: string;
+  user_id: number;
+  user_moto_compra_id: string | null;
+  tipo: SolicitudTallerTipo;
+  estado: SolicitudTallerEstado;
+  notas_cliente: string | null;
+  notas_admin: string | null;
+  fecha_preferida: string | null;
+  descripcion_falla: string | null;
+  total_estimado: number;
+  created_at: string;
+  updated_at: string;
+  users?: UserRow | null;
+  user_moto_compra?: UserMotoCompraRow | null;
+  solicitud_repuesto_items?: SolicitudRepuestoItemRow[];
+}
+
+export const SOLICITUD_TIPO_LABELS: Record<SolicitudTallerTipo, string> = {
+  repuestos: "Repuestos",
+  reparacion: "Reparación",
+  cambio_aceite: "Cambio de aceite",
+};
+
+export const SOLICITUD_ESTADO_LABELS: Record<SolicitudTallerEstado, string> = {
+  pendiente: "Pendiente",
+  en_proceso: "En proceso",
+  completada: "Completada",
+  cancelada: "Cancelada",
+};
+
+/** Licencia de Tránsito (tarjeta de propiedad) archivada con fotos. */
+export interface TarjetaPropiedadRow {
+  id: string;
+  numero_licencia: string | null;
+  placa: string | null;
+  marca: string | null;
+  linea: string | null;
+  modelo: string | null;
+  cilindrada: string | null;
+  color: string | null;
+  servicio: string | null;
+  clase_vehiculo: string | null;
+  tipo_carroceria: string | null;
+  combustible: string | null;
+  capacidad: string | null;
+  numero_motor: string | null;
+  motor_reg: string | null;
+  vin: string | null;
+  numero_serie: string | null;
+  serie_reg: string | null;
+  numero_chasis: string | null;
+  chasis_reg: string | null;
+  propietario: string | null;
+  identificacion_tipo: string | null;
+  identificacion_numero: string | null;
+  /** Anverso (frente). */
+  imagen_url: string;
+  /** Reverso. */
+  imagen_reverso_url: string | null;
+  raw_ocr_text: string | null;
+  created_at: string;
+  updated_at: string;
+}

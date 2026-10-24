@@ -1,0 +1,235 @@
+﻿import { Bike, User } from "lucide-react";
+import { parseTitularidadHistorial } from "@/lib/admin/titularidad";
+import type { BikeRow, ClientPipeline } from "@/lib/pipeline/types";
+import {
+  COMPRA_ESTADO_LABELS,
+  FRECUENCIA_LABELS,
+} from "@/lib/pipeline/types";
+import { referralLabel } from "@/lib/referrals";
+import { formatCop, formatCuotas, formatDate } from "@/lib/utils/format";
+import { GpsMotoPanel } from "@/components/pipeline/gps-moto-panel";
+import { LazyDetails } from "@/components/clientes/lazy-details";
+import { Card, CardContent } from "@/components/ui/card";
+
+function InfoItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-sm font-medium">{value}</dd>
+    </div>
+  );
+}
+
+function PhotoThumb({
+  src,
+  alt,
+  fallback,
+  caption,
+}: {
+  src: string | null;
+  alt: string;
+  fallback: "user" | "bike";
+  caption: string;
+}) {
+  return (
+    <div className="photo-edge relative aspect-square overflow-hidden rounded-lg bg-muted/50">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={alt} className="h-full w-full object-cover" />
+      ) : (
+        <div
+          className="flex h-full w-full items-center justify-center text-muted-foreground"
+          aria-hidden
+        >
+          {fallback === "user" ? (
+            <User className="h-8 w-8" />
+          ) : (
+            <Bike className="h-8 w-8" />
+          )}
+        </div>
+      )}
+      <span className="absolute bottom-1.5 left-1.5 rounded bg-foreground/70 px-1.5 py-0.5 text-xs font-medium text-background">
+        {caption}
+      </span>
+    </div>
+  );
+}
+
+export function ClientInfoSummary({
+  pipeline,
+  bikes = [],
+}: {
+  pipeline: ClientPipeline;
+  bikes?: BikeRow[];
+}) {
+  const hoja = pipeline.contract?.hoja_vida_data as
+    | Record<string, unknown>
+    | undefined;
+  const contrato = pipeline.contract?.contrato_data as
+    | Record<string, unknown>
+    | undefined;
+  const cedula =
+    (hoja?.numero_identificacion as string | undefined)?.trim() ||
+    (contrato?.cedula_contratante as string | undefined)?.trim() ||
+    null;
+  const celular =
+    (hoja?.celular as string | undefined)?.trim() ||
+    pipeline.visita?.cliente_celular?.trim() ||
+    null;
+  const compra = pipeline.compra;
+  const resumen = pipeline.rentingResumen;
+  const selfieUrl = pipeline.document?.selfie_url ?? null;
+  const motoImagenUrl =
+    bikes.find((b) => b.id === compra?.bike_id)?.imagen_url ?? null;
+
+  const hasPagos = Boolean(
+    resumen &&
+      (resumen.cuotasPagadas > 0 ||
+        resumen.totalPagado > 0 ||
+        resumen.totalAdeudado > 0),
+  );
+
+  const hasContent =
+    cedula ||
+    celular ||
+    compra ||
+    hasPagos ||
+    pipeline.visita?.direccion_visita ||
+    selfieUrl ||
+    motoImagenUrl ||
+    pipeline.document?.referral_source;
+
+  const placaGps = compra?.placa?.trim() || null;
+  const titularidadHistorial = parseTitularidadHistorial(
+    (compra?.admin_data as Record<string, unknown> | undefined) ?? null,
+  );
+  if (!hasContent && !placaGps) return null;
+
+  return (
+    <Card className="overflow-hidden border-border shadow-none">
+      <CardContent className="flex flex-col gap-0 p-0">
+        <div className="flex flex-col gap-0 sm:flex-row">
+          <div className="grid w-full shrink-0 grid-cols-2 gap-0 border-b border-border sm:w-56 sm:grid-cols-1 sm:border-b-0 sm:border-r">
+            <PhotoThumb
+              src={selfieUrl}
+              alt={`Foto de ${pipeline.displayName}`}
+              fallback="user"
+              caption="Cliente"
+            />
+            <PhotoThumb
+              src={motoImagenUrl}
+              alt={compra ? `Moto ${compra.modelo}` : "Moto"}
+              fallback="bike"
+              caption={compra?.placa ?? "Moto"}
+            />
+          </div>
+
+          <dl className="grid flex-1 gap-4 p-4 sm:grid-cols-2 sm:p-6">
+            {cedula ? <InfoItem label="Cédula" value={cedula} /> : null}
+            {celular ? <InfoItem label="Celular" value={celular} /> : null}
+            {pipeline.document?.referral_source ? (
+              <InfoItem
+                label="Referido por"
+                value={
+                  referralLabel(pipeline.document.referral_source) ??
+                  pipeline.document.referral_source
+                }
+              />
+            ) : null}
+            {compra ? (
+              <>
+                <InfoItem
+                  label="Moto"
+                  value={`${compra.modelo} · ${compra.color}`}
+                />
+                {compra.placa ? (
+                  <InfoItem label="Placa" value={compra.placa} />
+                ) : null}
+                <InfoItem
+                  label="Estado compra"
+                  value={COMPRA_ESTADO_LABELS[compra.estado]}
+                />
+                {compra.estado !== "cancelada" ? (
+                  <InfoItem
+                    label="Frecuencia de pago"
+                    value={FRECUENCIA_LABELS[compra.frecuencia_pago]}
+                  />
+                ) : null}
+              </>
+            ) : null}
+            {pipeline.visita?.direccion_visita ? (
+              <InfoItem
+                label="Dirección"
+                value={pipeline.visita.direccion_visita}
+              />
+            ) : null}
+          </dl>
+        </div>
+
+        {hasPagos && resumen ? (
+          <LazyDetails
+            className="border-t border-border"
+            summaryClassName="cursor-pointer px-4 py-3 text-sm font-medium sm:px-6"
+            summary="Ver pagos"
+          >
+            <dl className="grid gap-4 border-t border-border px-4 py-4 sm:grid-cols-2 sm:px-6">
+              <InfoItem
+                label="Cuotas pagadas"
+                value={formatCuotas(resumen.cuotasPagadas)}
+              />
+              <InfoItem
+                label="Total pagado"
+                value={formatCop(resumen.totalPagado)}
+              />
+              {resumen.totalAdeudado > 0 ? (
+                <InfoItem
+                  label="Adeudado"
+                  value={formatCop(resumen.totalAdeudado)}
+                />
+              ) : null}
+            </dl>
+          </LazyDetails>
+        ) : null}
+
+        {placaGps ? (
+          <LazyDetails
+            className="border-t border-border"
+            summaryClassName="cursor-pointer px-4 py-3 text-sm font-medium sm:px-6"
+            summary={`GPS · ${placaGps}`}
+          >
+            <div className="border-t border-border">
+              <GpsMotoPanel
+                placa={placaGps}
+                userId={pipeline.user.id}
+                embedded
+              />
+            </div>
+          </LazyDetails>
+        ) : null}
+
+        {titularidadHistorial.length > 0 ? (
+          <div className="border-t border-border px-4 py-4 sm:px-6">
+            <p className="text-xs text-muted-foreground">
+              Historial de titularidad
+            </p>
+            <ul className="mt-2 flex flex-col gap-1.5">
+              {titularidadHistorial.map((e, i) => (
+                <li key={`${e.at}-${i}`} className="text-sm">
+                  <span className="font-medium">
+                    @{e.from_user} → @{e.to_user}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {" · "}
+                    {formatDate(e.at)}
+                    {e.motivo ? ` · ${e.motivo}` : ""}
+                    {e.by ? ` · por ${e.by}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
