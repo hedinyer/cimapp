@@ -16,7 +16,7 @@ export function getSupabaseAnonKey(): string {
 
 export function getConfigErrorMessage(): string | null {
   if (!SUPABASE_URL.trim() || !SUPABASE_ANON_KEY.trim()) {
-    return "Falta configurar SUPABASE_URL y SUPABASE_ANON_KEY en src/lib/supabase/public-env.ts.";
+    return "Falta configurar NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY en .env.local.";
   }
   return null;
 }

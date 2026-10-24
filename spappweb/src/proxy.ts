@@ -10,6 +10,15 @@ import {
   visitadorSessionOptions,
   type VisitadorSessionData,
 } from "@/lib/auth/visitador-session";
+import { createClient as createSupabaseProxyClient } from "@/utils/supabase/middleware";
+
+function redirectWithSupabaseCookies(url: URL, supabaseResponse: NextResponse) {
+  const redirect = NextResponse.redirect(url);
+  supabaseResponse.cookies.getAll().forEach((cookie) => {
+    redirect.cookies.set(cookie);
+  });
+  return redirect;
+}
 
 const adminProtectedPrefixes = [
   "/inbox",
@@ -38,8 +47,15 @@ const visitadorProtectedPrefixes = [
 ];
 
 export async function proxy(request: NextRequest) {
+  const { supabase, supabaseResponse } = createSupabaseProxyClient(request);
+  try {
+    await supabase.auth.getClaims();
+  } catch {
+    // El panel autentica con iron-session; una sesión Auth vacía no bloquea.
+  }
+
   const { pathname } = request.nextUrl;
-  const response = NextResponse.next();
+  const response = supabaseResponse;
 
   const needsAdminSession =
     pathname === "/" ||
@@ -73,31 +89,45 @@ export async function proxy(request: NextRequest) {
   );
 
   if (pathname === "/login" && isAdminLoggedIn) {
-    return NextResponse.redirect(new URL("/inbox", request.url));
+    return redirectWithSupabaseCookies(
+      new URL("/inbox", request.url),
+      supabaseResponse,
+    );
   }
 
   if (pathname === "/visitador/login" && isVisitadorLoggedIn) {
-    return NextResponse.redirect(
+    return redirectWithSupabaseCookies(
       new URL("/visitador/mis-visitas", request.url),
+      supabaseResponse,
     );
   }
 
   if (pathname === "/hojadevida/login") {
-    return NextResponse.redirect(new URL("/hojadevida", request.url));
+    return redirectWithSupabaseCookies(
+      new URL("/hojadevida", request.url),
+      supabaseResponse,
+    );
   }
 
   if (pathname === "/") {
-    return NextResponse.redirect(
+    return redirectWithSupabaseCookies(
       new URL(isAdminLoggedIn ? "/inbox" : "/login", request.url),
+      supabaseResponse,
     );
   }
 
   if (isAdminProtected && !isAdminLoggedIn) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return redirectWithSupabaseCookies(
+      new URL("/login", request.url),
+      supabaseResponse,
+    );
   }
 
   if (isVisitadorProtected && !isVisitadorLoggedIn) {
-    return NextResponse.redirect(new URL("/visitador/login", request.url));
+    return redirectWithSupabaseCookies(
+      new URL("/visitador/login", request.url),
+      supabaseResponse,
+    );
   }
 
   return response;
