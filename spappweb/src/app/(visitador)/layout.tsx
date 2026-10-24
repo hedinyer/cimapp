@@ -7,6 +7,8 @@ import {
 import { BrandLogos } from "@/components/brand/brand-logos";
 import { VisitadorLogoutButton } from "@/components/visitador/visitador-logout-button";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Portal Visitador",
   description: "Visitas domiciliarias asignadas",

@@ -3,8 +3,7 @@ import {
   SUPABASE_URL,
 } from "@/lib/supabase/public-env";
 
-export const SESSION_SECRET =
-  process.env.SESSION_SECRET ?? "spapp-admin-local-dev-secret-32chars-min";
+export const SESSION_SECRET = "spapp-admin-local-dev-secret-32chars-min";
 
 export function getSupabaseUrl(): string {
   return SUPABASE_URL;

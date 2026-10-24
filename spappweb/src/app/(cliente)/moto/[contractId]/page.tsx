@@ -12,6 +12,8 @@ import {
 } from "@/lib/pipeline/types";
 import { formatCop } from "@/lib/utils/format";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Elegir moto" };
 
 function Notice({ title, body }: { title: string; body: string }) {

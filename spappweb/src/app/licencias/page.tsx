@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Licencias de tránsito",
   description: "Consulta y descarga la tarjeta de propiedad por placa.",

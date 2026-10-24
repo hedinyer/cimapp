@@ -10,6 +10,8 @@ import {
 import { ContractSignFlow } from "@/components/contrato/contract-sign-flow";
 import type { FrecuenciaPago } from "@/lib/pipeline/types";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Firmar contrato" };
 
 function Notice({ title, body }: { title: string; body: string }) {

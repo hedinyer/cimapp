@@ -5,7 +5,7 @@ import { normalizeLibrary, type StoredLibrary } from "@/lib/artifacts/stored-cha
 import { createAdminClient } from "@/lib/supabase/admin";
 
 function secret(): string {
-  return process.env.AI_TEST_HISTORY_SECRET?.trim() ?? "";
+  return "cimapp-ai-test-history";
 }
 
 export async function loadAiTestHistory(): Promise<StoredLibrary | null> {

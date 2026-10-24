@@ -3,6 +3,8 @@ import { countStockSegundaMano } from "@/lib/garaje/stock-segunda";
 import { CatalogoManager } from "@/components/catalogo/catalogo-manager";
 import { MotosHubFrame } from "@/components/motos/motos-hub-frame";
 
+export const dynamic = "force-dynamic";
+
 export default async function CatalogoPage() {
   const [bikes, motosGaraje] = await Promise.all([
     getAllBikes(),

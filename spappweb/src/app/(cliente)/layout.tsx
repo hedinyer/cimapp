@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { BrandLogos } from "@/components/brand/brand-logos";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Hoja de vida",
 };

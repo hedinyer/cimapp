@@ -3,6 +3,8 @@ import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { UsoRecorder } from "@/components/layout/uso-recorder";
 import { getAdminClientReferralScope } from "@/lib/auth/admin-client-scope";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
   children,
 }: {

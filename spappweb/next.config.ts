@@ -6,11 +6,16 @@ const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS ?? "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const appRoot = path.join(__dirname);
+
 const nextConfig: NextConfig = {
   // El git root puede estar en el padre del package. Sin esto, Turbopack
   // a veces arma mal el árbol de rutas y todas las páginas responden 404.
+  // outputFileTracingRoot y turbopack.root tienen que ser el mismo valor
+  // (Vercel avisa y el build puede quedar raro si no coinciden).
+  outputFileTracingRoot: appRoot,
   turbopack: {
-    root: path.join(__dirname),
+    root: appRoot,
   },
   ...(allowedDevOrigins.length > 0 ? { allowedDevOrigins } : {}),
   reactCompiler: true,
