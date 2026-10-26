@@ -8,7 +8,7 @@ import { logoutAdminAction } from "@/lib/actions/auth-actions";
 import {
   isChildActive,
   isGroupActive,
-  navGroupsForAdminScope,
+  navGroupsForMenu,
 } from "@/components/layout/admin-nav-links";
 import { ScopedReferralLink } from "@/components/layout/scoped-referral-link";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ export function AdminMobileNav({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const navGroups = navGroupsForAdminScope(hideEquipo);
+  const navGroups = navGroupsForMenu(hideEquipo);
 
   useEffect(() => {
     setOpen(false);

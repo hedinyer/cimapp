@@ -1,5 +1,4 @@
-/** Vacío a propósito: define `NEXT_PUBLIC_SITE_URL` en el entorno. */
-export const DEFAULT_SITE_URL = "";
+export const DEFAULT_SITE_URL = "https://cimapp.vercel.app";
 
 export function getSiteUrl() {
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");

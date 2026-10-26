@@ -41,7 +41,7 @@ export function EquipoReferralCards() {
               <CardTitle>{source.label}</CardTitle>
               <CardDescription>
                 {source.slug === "punto-de-venta"
-                  ? "Link del local: /hojadevida (con o sin ?ref=punto-de-venta)."
+                  ? "Link del local. También vale con ?ref=punto-de-venta."
                   : "Cada hoja de vida por este link queda registrada a su nombre para comisiones."}
               </CardDescription>
             </CardHeader>

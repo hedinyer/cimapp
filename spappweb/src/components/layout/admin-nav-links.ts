@@ -2,7 +2,6 @@ import {
   BadgeCheck,
   Banknote,
   Bike,
-  Bot,
   ClipboardList,
   History,
   IdCard,
@@ -102,13 +101,6 @@ export const adminNavGroups: AdminNavGroup[] = [
     icon: Users,
     children: [],
   },
-  {
-    id: "ai-test",
-    label: "AI test",
-    href: "/ai-test",
-    icon: Bot,
-    children: [],
-  },
 ];
 
 export function pathMatchesHref(pathname: string, href: string): boolean {
@@ -161,6 +153,11 @@ export function navGroupsForAdminScope(hideEquipo: boolean): AdminNavGroup[] {
         ),
       };
     });
+}
+
+/** Menú visible: sin Taller (Tablero, Sebastian, Mecánicos). */
+export function navGroupsForMenu(hideEquipo: boolean): AdminNavGroup[] {
+  return navGroupsForAdminScope(hideEquipo).filter((g) => g.id !== "taller");
 }
 
 export { LogOut as AdminLogoutIcon };
