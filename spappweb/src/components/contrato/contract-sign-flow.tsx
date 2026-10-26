@@ -351,7 +351,11 @@ export function ContractSignFlow({
           <LegalBox title="Firma del contrato" body={renderFirma(formData)} />
           <FirmaParty
             title="LA PROPIETARIA"
-            sigSrc={`/${EMPRESA_PROPIETARIA.firmaFile}`}
+            sigSrc={
+              EMPRESA_PROPIETARIA.firmaFile
+                ? `/${EMPRESA_PROPIETARIA.firmaFile}`
+                : null
+            }
             sigAlt={`Firma de ${EMPRESA_PROPIETARIA.representante}`}
             lines={[
               EMPRESA_PROPIETARIA.representante,
@@ -473,7 +477,7 @@ function FirmaParty({
   lines,
 }: {
   title: string;
-  sigSrc: string;
+  sigSrc: string | null;
   sigAlt: string;
   lines: string[];
 }) {
@@ -482,8 +486,12 @@ function FirmaParty({
       <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-900">
         {title}
       </p>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={sigSrc} alt={sigAlt} className="mb-2 h-20 w-auto object-contain" />
+      {sigSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={sigSrc} alt={sigAlt} className="mb-2 h-20 w-auto object-contain" />
+      ) : (
+        <div className="mb-2 h-20" />
+      )}
       <div className="mb-3 border-b border-slate-400" />
       {lines.map((line, i) => (
         <p

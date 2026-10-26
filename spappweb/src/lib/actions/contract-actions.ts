@@ -59,16 +59,29 @@ export async function signContract(input: z.infer<typeof signSchema>) {
   }
 
   const userId = contract.user_id as number;
+  const compraSelect =
+    "modelo, color, placa, chasis, referencia, frecuencia_pago, cuota_inicial_monto, monto_cuota_periodo, admin_data";
 
-  const { data: compra, error: compraError } = await supabase
+  let { data: compra, error: compraError } = await supabase
     .from("user_moto_compra")
-    .select(
-      "modelo, color, placa, chasis, referencia, frecuencia_pago, cuota_inicial_monto, monto_cuota_periodo, admin_data",
-    )
-    .eq("user_id", userId)
+    .select(compraSelect)
+    .eq("digital_contract_id", parsed.contractId)
     .maybeSingle();
 
   if (compraError) throw new Error(compraError.message);
+
+  if (!compra) {
+    const fallback = await supabase
+      .from("user_moto_compra")
+      .select(compraSelect)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (fallback.error) throw new Error(fallback.error.message);
+    compra = fallback.data;
+  }
+
   if (!compra?.placa?.trim() || !compra?.chasis?.trim()) {
     throw new Error("La moto aún no está asignada.");
   }
@@ -109,27 +122,34 @@ export async function signContract(input: z.infer<typeof signSchema>) {
     "base64",
   );
 
-  const [hojaVidaPdf, contratoPdf] = await Promise.all([
-    generateHojaVidaPdf({
-      hoja: contract.hoja_vida_data as Record<string, unknown>,
-      signatureDataUrl: parsed.firmaPngBase64,
-      comercial: {
-        placa: compra.placa as string,
-        chasis: compra.chasis as string,
-        color: compra.color as string,
-        referencia: (compra.referencia as string | null) ?? "—",
-        modelo: compra.modelo as string,
-        cuotaInicial: contratoData.cuotaInicial,
-        valorCuota: contratoData.valorCuota,
-        frecuenciaPago: contratoData.frecuenciaPago,
-        estado: contratoData.estado,
-      },
-    }),
-    generateContratoPdf({
-      contrato: contratoData,
-      signatureDataUrl: parsed.firmaPngBase64,
-    }),
-  ]);
+  let hojaVidaPdf: Buffer;
+  let contratoPdf: Buffer;
+  try {
+    [hojaVidaPdf, contratoPdf] = await Promise.all([
+      generateHojaVidaPdf({
+        hoja: contract.hoja_vida_data as Record<string, unknown>,
+        signatureDataUrl: parsed.firmaPngBase64,
+        comercial: {
+          placa: compra.placa as string,
+          chasis: compra.chasis as string,
+          color: compra.color as string,
+          referencia: (compra.referencia as string | null) ?? "—",
+          modelo: compra.modelo as string,
+          cuotaInicial: contratoData.cuotaInicial,
+          valorCuota: contratoData.valorCuota,
+          frecuenciaPago: contratoData.frecuenciaPago,
+          estado: contratoData.estado,
+        },
+      }),
+      generateContratoPdf({
+        contrato: contratoData,
+        signatureDataUrl: parsed.firmaPngBase64,
+      }),
+    ]);
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : "error desconocido";
+    throw new Error(`No se pudo generar el PDF del contrato. ${detail}`);
+  }
 
   const base = `${userId}/${contract.id}`;
   const signaturePath = `${base}/signature.png`;
@@ -206,5 +226,7 @@ export async function signContract(input: z.infer<typeof signSchema>) {
 
   revalidatePath("/inbox");
   revalidatePath(`/clientes/${userId}`);
+  revalidatePath(`/contrato/${contract.id}`);
+  revalidatePath(`/moto/${contract.id}`);
   return { ok: true };
 }

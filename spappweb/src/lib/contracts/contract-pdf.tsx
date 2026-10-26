@@ -32,10 +32,40 @@ const TIPO_PDF_CODE: Record<string, string> = {
   cv: "CV",
 };
 
-async function publicImage(file: string): Promise<{ data: Buffer; format: "png" | "jpg" }> {
-  const data = await readFile(path.join(process.cwd(), "public", file));
-  // ponytail: react-pdf trata jpeg como jpg
-  return { data, format: file.endsWith(".png") ? "png" : "jpg" };
+type PdfImage = { data: Buffer; format: "png" | "jpg" };
+
+function detectImageFormat(data: Buffer, filename: string): "png" | "jpg" {
+  if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) {
+    return "jpg";
+  }
+  if (
+    data.length >= 8 &&
+    data[0] === 0x89 &&
+    data[1] === 0x50 &&
+    data[2] === 0x4e &&
+    data[3] === 0x47
+  ) {
+    return "png";
+  }
+  return filename.toLowerCase().endsWith(".png") ? "png" : "jpg";
+}
+
+const PUBLIC_DIR = path.join(process.cwd(), "public");
+const KNOWN_PUBLIC_IMAGES: Record<string, string> = {
+  "logo-cim.png": path.join(PUBLIC_DIR, "logo-cim.png"),
+  "logo-bera.png": path.join(PUBLIC_DIR, "logo-bera.png"),
+};
+
+async function publicImage(file: string): Promise<PdfImage | null> {
+  const name = file.trim().replace(/^\/+/, "");
+  if (!name) return null;
+  const fsPath = KNOWN_PUBLIC_IMAGES[name] ?? path.join(PUBLIC_DIR, name);
+  try {
+    const data = await readFile(fsPath);
+    return { data, format: detectImageFormat(data, name) };
+  } catch {
+    return null;
+  }
 }
 
 const serif = "Times-Roman";
@@ -151,14 +181,14 @@ function ContratoHeader({
   empresaLogo,
   beraLogo,
 }: {
-  empresaLogo: { data: Buffer; format: "png" | "jpg" };
-  beraLogo: { data: Buffer; format: "png" | "jpg" };
+  empresaLogo: PdfImage | null;
+  beraLogo: PdfImage | null;
 }) {
   return (
     <View style={styles.headerBand} fixed>
       <View style={styles.headerLogos}>
-        <Image style={styles.headerLogo} src={empresaLogo} />
-        <Image style={styles.headerLogo} src={beraLogo} />
+        {empresaLogo ? <Image style={styles.headerLogo} src={empresaLogo} /> : null}
+        {beraLogo ? <Image style={styles.headerLogo} src={beraLogo} /> : null}
       </View>
     </View>
   );
@@ -170,16 +200,16 @@ function FirmaCol({
   lines,
 }: {
   role: string;
-  sigSrc: { data: Buffer; format: "png" | "jpg" } | string;
+  sigSrc: PdfImage | string | null;
   lines: string[];
 }) {
   return (
     <View style={styles.firmaCol}>
       <Text style={styles.firmaRole}>{role}</Text>
-      <Image style={styles.sigImg} src={sigSrc} />
+      {sigSrc ? <Image style={styles.sigImg} src={sigSrc} /> : <View style={styles.sigImg} />}
       <View style={styles.sigLine} />
       {lines.map((line, i) => (
-        <Text key={line} style={i === 0 ? styles.sigName : styles.sigMeta}>
+        <Text key={`${i}-${line}`} style={i === 0 ? styles.sigName : styles.sigMeta}>
           {line}
         </Text>
       ))}
