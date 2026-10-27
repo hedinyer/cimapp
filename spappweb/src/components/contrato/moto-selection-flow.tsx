@@ -14,9 +14,10 @@ import {
 import { selectMotoFromContract } from "@/lib/actions/moto-compra-actions";
 import {
   calcMotoPayment,
-  FRECUENCIA_PERIOD,
+  FRECUENCIA_PERIOD_LUN_SAB,
   montoCuotaPeriodo,
 } from "@/lib/moto-payment";
+import { CALENDARIO_LUN_SAB } from "@/lib/payments/calendario-cobro";
 import type {
   BikeRow,
   FrecuenciaPago,
@@ -39,7 +40,11 @@ type CatalogPick =
   | { kind: "garaje"; moto: GarajeMotoRow };
 
 function pickPayment(pick: CatalogPick, frecuencia: FrecuenciaPago) {
-  if (pick.kind === "bike") return calcMotoPayment(pick.bike, frecuencia);
+  if (pick.kind === "bike") {
+    return calcMotoPayment(pick.bike, frecuencia, {
+      calendario: CALENDARIO_LUN_SAB,
+    });
+  }
   return calcMotoPayment(
     {
       cuota_inicial: pick.moto.cuota_inicial!,
@@ -47,6 +52,7 @@ function pickPayment(pick: CatalogPick, frecuencia: FrecuenciaPago) {
       monto_visita: pick.moto.monto_visita ?? 0,
     },
     frecuencia,
+    { calendario: CALENDARIO_LUN_SAB },
   );
 }
 
@@ -272,10 +278,12 @@ export function MotoSelectionFlow({
               />
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{FRECUENCIA_LABELS[f]}</p>
-                <p className="text-sm text-muted-foreground">{FRECUENCIA_PERIOD[f]}</p>
+                <p className="text-sm text-muted-foreground">
+                  {FRECUENCIA_PERIOD_LUN_SAB[f]}
+                </p>
               </div>
               <p className="shrink-0 font-semibold">
-                {formatCop(montoCuotaPeriodo(cuotaDiaria, f))}
+                {formatCop(montoCuotaPeriodo(cuotaDiaria, f, CALENDARIO_LUN_SAB))}
               </p>
             </button>
           ))}

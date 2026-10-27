@@ -310,7 +310,7 @@ export async function getClientPipeline(
   const { data: tarifas } = await supabase
     .from("tarifas_pagadas")
     .select(
-      "id, user_moto_compra_id, user_id, numero_periodo, fecha_vencimiento, monto_esperado, monto_pagado, estado, pagada_at, confirmada_por, notas, tipo, motivo",
+      "id, user_moto_compra_id, user_id, numero_periodo, fecha_vencimiento, monto_esperado, monto_pagado, estado, pagada_at, confirmada_por, notas",
     )
     .eq("user_id", userId)
     .order("numero_periodo");

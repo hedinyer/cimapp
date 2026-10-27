@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { calcMotoPayment } from "@/lib/moto-payment";
+import {
+  CALENDARIO_LUN_SAB,
+  periodosAnuales,
+} from "@/lib/payments/calendario-cobro";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const selectSchema = z
@@ -78,6 +82,7 @@ export async function selectMotoFromContract(
         monto_visita: garaje.monto_visita ?? 0,
       },
       parsed.frecuencia,
+      { calendario: CALENDARIO_LUN_SAB },
     );
 
     const { error: insertError } = await supabase.from("user_moto_compra").insert({
@@ -92,6 +97,10 @@ export async function selectMotoFromContract(
       frecuencia_pago: parsed.frecuencia,
       ...payment,
       estado: "pendiente_pago",
+      admin_data: {
+        calendario_cobro: CALENDARIO_LUN_SAB,
+        periodos_contrato: periodosAnuales(parsed.frecuencia, CALENDARIO_LUN_SAB),
+      },
     });
 
     if (insertError) throw new Error(insertError.message);
@@ -115,7 +124,9 @@ export async function selectMotoFromContract(
     throw new Error("La moto seleccionada ya no está disponible.");
   }
 
-  const payment = calcMotoPayment(bike, parsed.frecuencia);
+  const payment = calcMotoPayment(bike, parsed.frecuencia, {
+    calendario: CALENDARIO_LUN_SAB,
+  });
 
   const { error: insertError } = await supabase.from("user_moto_compra").insert({
     user_id: userId,
@@ -126,6 +137,10 @@ export async function selectMotoFromContract(
     frecuencia_pago: parsed.frecuencia,
     ...payment,
     estado: "pendiente_pago",
+    admin_data: {
+      calendario_cobro: CALENDARIO_LUN_SAB,
+      periodos_contrato: periodosAnuales(parsed.frecuencia, CALENDARIO_LUN_SAB),
+    },
   });
 
   if (insertError) throw new Error(insertError.message);

@@ -199,6 +199,10 @@ export interface UserMotoCompraRow {
     es_renovacion?: boolean;
     /** Plazo del contrato en días (override del año por defecto). */
     dias_contrato?: number;
+    /** Número de cuotas del contrato. */
+    periodos_contrato?: number;
+    /** `lun_sab` = cobro lunes a sábado. Ausente = calendario histórico. */
+    calendario_cobro?: "lun_dom" | "lun_sab";
     /** Conductor autorizado (puede ser distinto al titular). */
     conductor?: {
       nombre?: string;

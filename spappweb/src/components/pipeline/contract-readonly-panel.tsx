@@ -11,6 +11,18 @@ import {
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { updateContractHojaVida } from "@/lib/actions/admin-actions";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import {
+  cuotaDiariaFromPeriodo,
+  montoCuotaPeriodo,
+} from "@/lib/moto-payment";
+import {
+  CALENDARIO_LUN_SAB,
+  calendarioFromAdminData,
+  periodosAnuales,
+  periodosContratoFromAdminData,
+} from "@/lib/payments/calendario-cobro";
+import { formatCop } from "@/lib/utils/format";
 import { contractStatusLabel } from "@/lib/pipeline/step-logic";
 import { getContractPublicUrl } from "@/lib/utils/storage-urls";
 import {
@@ -23,7 +35,12 @@ import {
   type HojaVidaFormData,
   type TipoIdentificacion,
 } from "@/lib/contracts/hoja-vida-schema";
-import type { DigitalContractRow } from "@/lib/pipeline/types";
+import type {
+  DigitalContractRow,
+  FrecuenciaPago,
+  UserMotoCompraRow,
+} from "@/lib/pipeline/types";
+import { FRECUENCIA_LABELS } from "@/lib/pipeline/types";
 import { formatDate } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,9 +51,20 @@ import { TouchSelect } from "@/components/ui/touch-select";
 
 interface ContractReadonlyPanelProps {
   contract: DigitalContractRow | null;
+  compra?: UserMotoCompraRow | null;
 }
 
-export function ContractReadonlyPanel({ contract }: ContractReadonlyPanelProps) {
+const FRECUENCIAS: FrecuenciaPago[] = [
+  "diario",
+  "semanal",
+  "quincenal",
+  "mensual",
+];
+
+export function ContractReadonlyPanel({
+  contract,
+  compra = null,
+}: ContractReadonlyPanelProps) {
   if (!contract) {
     return (
       <Card>
@@ -61,7 +89,8 @@ export function ContractReadonlyPanel({ contract }: ContractReadonlyPanelProps) 
         <div>
           <CardTitle>Contrato digital</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Al editar la hoja de vida se actualiza el contrato y se regeneran los PDFs
+            Al editar se actualizan los datos del cliente, el contrato PDF y el
+            talonario de pagos.
           </p>
         </div>
         <Badge variant="outline" className="w-fit border-border">
@@ -76,25 +105,63 @@ export function ContractReadonlyPanel({ contract }: ContractReadonlyPanelProps) 
           {hojaPdf && <PdfLink href={hojaPdf} label="PDF Hoja de vida" />}
           {contratoPdf && <PdfLink href={contratoPdf} label="PDF Contrato" />}
         </div>
-        <HojaVidaAdminEditor contract={contract} />
+        <HojaVidaAdminEditor contract={contract} compra={compra} />
       </CardContent>
     </Card>
   );
 }
 
-function HojaVidaAdminEditor({ contract }: { contract: DigitalContractRow }) {
+function commercialFromCompra(compra: UserMotoCompraRow) {
+  const calendario = calendarioFromAdminData(compra.admin_data);
+  const frecuencia = compra.frecuencia_pago;
+  return {
+    frecuencia,
+    periodos:
+      periodosContratoFromAdminData(compra.admin_data) ??
+      periodosAnuales(frecuencia, calendario),
+    cuotaDiaria: cuotaDiariaFromPeriodo(
+      compra.monto_cuota_periodo,
+      frecuencia,
+      calendario,
+    ),
+  };
+}
+
+function HojaVidaAdminEditor({
+  contract,
+  compra,
+}: {
+  contract: DigitalContractRow;
+  compra: UserMotoCompraRow | null;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<HojaVidaFormData>(() =>
     parseHojaVidaForm(contract.hoja_vida_data ?? {}),
   );
+  const initialCommercial = compra ? commercialFromCompra(compra) : null;
+  const [frecuencia, setFrecuencia] = useState<FrecuenciaPago>(
+    initialCommercial?.frecuencia ?? "semanal",
+  );
+  const [periodos, setPeriodos] = useState(
+    initialCommercial?.periodos ?? periodosAnuales("semanal", CALENDARIO_LUN_SAB),
+  );
+  const [cuotaDiaria, setCuotaDiaria] = useState<number | null>(
+    initialCommercial?.cuotaDiaria ?? null,
+  );
 
   useEffect(() => {
     if (!editing) {
       setForm(parseHojaVidaForm(contract.hoja_vida_data ?? {}));
+      if (compra) {
+        const next = commercialFromCompra(compra);
+        setFrecuencia(next.frecuencia);
+        setPeriodos(next.periodos);
+        setCuotaDiaria(next.cuotaDiaria);
+      }
     }
-  }, [contract.hoja_vida_data, contract.updated_at, editing]);
+  }, [contract.hoja_vida_data, contract.updated_at, editing, compra]);
 
   const hasHojaData = Object.keys(contract.hoja_vida_data ?? {}).length > 0;
   const tipo = form.tipo_identificacion;
@@ -129,6 +196,12 @@ function HojaVidaAdminEditor({ contract }: { contract: DigitalContractRow }) {
 
   function onCancel() {
     setForm(parseHojaVidaForm(contract.hoja_vida_data ?? {}));
+    if (compra) {
+      const next = commercialFromCompra(compra);
+      setFrecuencia(next.frecuencia);
+      setPeriodos(next.periodos);
+      setCuotaDiaria(next.cuotaDiaria);
+    }
     setEditing(false);
   }
 
@@ -138,21 +211,33 @@ function HojaVidaAdminEditor({ contract }: { contract: DigitalContractRow }) {
         contractId: contract.id,
         userId: contract.user_id,
         hojaVida: form,
+        ...(compra
+          ? {
+              frecuencia,
+              periodosContrato: periodos,
+              cuotaDiaria: cuotaDiaria ?? undefined,
+            }
+          : {}),
       });
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
-      toast.success("Hoja de vida, contrato y PDFs actualizados.");
+      toast.success("Cliente, contrato PDF y talonario actualizados.");
       setEditing(false);
       router.refresh();
     });
   }
 
+  const montoPeriodoPreview =
+    compra && cuotaDiaria != null && cuotaDiaria > 0
+      ? montoCuotaPeriodo(cuotaDiaria, frecuencia, CALENDARIO_LUN_SAB)
+      : null;
+
   return (
     <div className="rounded-lg border border-border bg-muted/50 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium">Datos de hoja de vida</p>
+        <p className="font-medium">Datos del cliente y del contrato</p>
         {!editing ? (
           <Button
             type="button"
@@ -196,6 +281,52 @@ function HojaVidaAdminEditor({ contract }: { contract: DigitalContractRow }) {
         </p>
       ) : editing ? (
         <div className="grid gap-3 sm:grid-cols-2">
+          {compra && (
+            <>
+              <Field label="Frecuencia de pago">
+                <TouchSelect
+                  aria-label="Frecuencia de pago"
+                  value={frecuencia}
+                  disabled={pending}
+                  onChange={(v) => setFrecuencia(v as FrecuenciaPago)}
+                  options={FRECUENCIAS.map((f) => ({
+                    value: f,
+                    label: FRECUENCIA_LABELS[f],
+                  }))}
+                />
+              </Field>
+              <Field label="Número de cuotas">
+                <Input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={periodos}
+                  onChange={(e) => setPeriodos(Number(e.target.value) || 0)}
+                  disabled={pending}
+                  className="min-h-11 bg-background"
+                />
+              </Field>
+              <Field label="Cuota diaria">
+                <CurrencyInput
+                  value={cuotaDiaria}
+                  onValueChange={setCuotaDiaria}
+                  min={1}
+                  disabled={pending}
+                  className="min-h-11 bg-background"
+                />
+              </Field>
+              <div className="sm:col-span-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+                Las cuotas se pagan de lunes a sábado.
+                {montoPeriodoPreview != null && (
+                  <>
+                    {" "}
+                    Cada cuota {FRECUENCIA_LABELS[frecuencia].toLowerCase()} queda
+                    en {formatCop(montoPeriodoPreview)} × {periodos} cuotas.
+                  </>
+                )}
+              </div>
+            </>
+          )}
           <Field label="Nombre">
             <Input
               value={form.nombre_completo}
@@ -358,6 +489,33 @@ function HojaVidaAdminEditor({ contract }: { contract: DigitalContractRow }) {
         </div>
       ) : (
         <>
+          {compra && (
+            <dl className="mb-4 grid gap-2 sm:grid-cols-2">
+              <div>
+                <dt className="text-muted-foreground">Frecuencia</dt>
+                <dd>
+                  {FRECUENCIA_LABELS[compra.frecuencia_pago]}
+                  {calendarioFromAdminData(compra.admin_data) === "lun_sab"
+                    ? " · lun–sáb"
+                    : ""}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Número de cuotas</dt>
+                <dd>
+                  {periodosContratoFromAdminData(compra.admin_data) ??
+                    periodosAnuales(
+                      compra.frecuencia_pago,
+                      calendarioFromAdminData(compra.admin_data),
+                    )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Cuota del periodo</dt>
+                <dd>{formatCop(compra.monto_cuota_periodo)}</dd>
+              </div>
+            </dl>
+          )}
           <dl className="grid gap-2 sm:grid-cols-2">
             {(
               [

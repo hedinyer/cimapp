@@ -4,7 +4,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { emitPipelineEvent } from "@/lib/agent/pipeline-events";
 import { calcMotoPayment } from "@/lib/moto-payment";
+import {
+  CALENDARIO_LUN_SAB,
+  periodosAnuales,
+} from "@/lib/payments/calendario-cobro";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { FrecuenciaPago } from "@/lib/pipeline/types";
 
 function motoAdminData(compra: {
   modelo: string;
@@ -19,7 +24,9 @@ function motoAdminData(compra: {
   estado: string;
   pago_inicial_confirmado: boolean;
   pago_cuota_confirmado: boolean;
+  admin_data?: Record<string, unknown> | null;
 }) {
+  const admin = (compra.admin_data ?? {}) as Record<string, unknown>;
   return {
     moto_modelo: compra.modelo,
     moto_color: compra.color,
@@ -33,6 +40,8 @@ function motoAdminData(compra: {
     compra_estado: compra.estado,
     pago_inicial_confirmado: compra.pago_inicial_confirmado,
     pago_cuota_confirmado: compra.pago_cuota_confirmado,
+    calendario_cobro: admin.calendario_cobro ?? CALENDARIO_LUN_SAB,
+    periodos_contrato: admin.periodos_contrato ?? null,
   };
 }
 
@@ -45,7 +54,7 @@ export async function ensureContractForCompra(
   const { data: compra, error } = await supabase
     .from("user_moto_compra")
     .select(
-      "id, user_id, digital_contract_id, modelo, color, frecuencia_pago, cuota_inicial_monto, monto_cuota_periodo, monto_total_primer_pago, placa, chasis, referencia, estado, pago_inicial_confirmado, pago_cuota_confirmado",
+      "id, user_id, digital_contract_id, modelo, color, frecuencia_pago, cuota_inicial_monto, monto_cuota_periodo, monto_total_primer_pago, placa, chasis, referencia, estado, pago_inicial_confirmado, pago_cuota_confirmado, admin_data",
     )
     .eq("id", compraId)
     .single();
@@ -142,6 +151,7 @@ const assignMotoSchema = z.object({
   cobraCuotaAdelantada: z.boolean().optional(),
   cuotaAdelantada: z.number().int().min(0).optional(),
   condicion: z.enum(["nueva", "segunda_mano"]).optional(),
+  periodos: z.number().int().positive(),
 });
 
 export async function assignMotoByAdminOp(
@@ -186,10 +196,16 @@ export async function assignMotoByAdminOp(
     throw new Error("El monto de visita no puede ser negativo.");
   }
 
+  const periodos =
+    parsed.periodos > 0
+      ? parsed.periodos
+      : periodosAnuales(parsed.frecuencia as FrecuenciaPago, CALENDARIO_LUN_SAB);
+
   const periodoPreview = calcMotoPayment(bike, parsed.frecuencia, {
     cuotaInicial,
     cuotaDiaria,
     montoVisita,
+    calendario: CALENDARIO_LUN_SAB,
   }).monto_cuota_periodo;
 
   const cuotaAdelantada =
@@ -208,6 +224,7 @@ export async function assignMotoByAdminOp(
     cuotaDiaria,
     montoVisita,
     cuotaAdelantada,
+    calendario: CALENDARIO_LUN_SAB,
   });
 
   const cobraAdelantada = payment.monto_cuota_adelantada > 0;
@@ -231,6 +248,8 @@ export async function assignMotoByAdminOp(
     ...((existing?.admin_data as Record<string, unknown> | null) ?? {}),
     cobra_cuota_adelantada: cobraAdelantada,
     condicion: parsed.condicion ?? "nueva",
+    calendario_cobro: CALENDARIO_LUN_SAB,
+    periodos_contrato: periodos,
   };
 
   let compraId: string;

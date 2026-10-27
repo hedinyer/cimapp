@@ -13,6 +13,7 @@ const checks = [
   "src/lib/garaje/stock-segunda.check.ts",
   "src/lib/payments/primer-pago-progress.check.ts",
   "src/lib/moto-payment.check.ts",
+  "src/lib/payments/calendario-cobro.check.ts",
   "src/lib/utils/format.check.ts",
   "src/lib/gps/ubicacionGps.check.ts",
   "src/lib/search/fuzzy-text.check.ts",

@@ -11,6 +11,7 @@ import {
   cuotaDiariaFromPeriodo,
   montoCuotaPeriodo,
 } from "@/lib/moto-payment";
+import { calendarioFromAdminData } from "@/lib/payments/calendario-cobro";
 import {
   allocateCobroPrimerPago,
   faltanteConcepto,
@@ -1005,13 +1006,16 @@ export async function updateFrecuenciaPagoCompra(input: {
   if (pagosError) throw new Error(pagosError.message);
 
   const recibidoCuota = (pagos ?? []).reduce((s, p) => s + Number(p.monto), 0);
+  const calendario = calendarioFromAdminData(compra.admin_data);
   const cuotaDiaria = cuotaDiariaFromPeriodo(
     Number(compra.monto_cuota_periodo),
     compra.frecuencia_pago as FrecuenciaPago,
+    calendario,
   );
   const montoCuotaPeriodoNuevo = montoCuotaPeriodo(
     cuotaDiaria,
     parsed.frecuencia,
+    calendario,
   );
 
   if (montoCuotaPeriodoNuevo < recibidoCuota) {

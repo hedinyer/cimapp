@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildContratoComercial, condicionFromAdminData, diasContratoFromAdminData, esRenovacionFromAdminData } from "@/lib/contracts/contrato-renting-clausulas";
+import { buildContratoComercial, compraToContratoInput } from "@/lib/contracts/contrato-renting-clausulas";
 import {
   prefillFromHojaYContrato,
   resolveHojaVidaForContract,
@@ -133,19 +133,19 @@ export default async function ContratoPage({
         celular: hoja.celular,
         correo: hoja.correo,
       }}
-      comercial={buildContratoComercial({
-        modelo: compra.modelo as string,
-        color: compra.color as string,
-        placa: compra.placa as string,
-        chasis: compra.chasis as string,
-        referencia: (compra.referencia as string | null) ?? null,
-        frecuencia_pago: compra.frecuencia_pago as FrecuenciaPago,
-        cuota_inicial_monto: compra.cuota_inicial_monto as number,
-        monto_cuota_periodo: compra.monto_cuota_periodo as number,
-        condicion: condicionFromAdminData(compra.admin_data),
-        diasContrato: diasContratoFromAdminData(compra.admin_data),
-        esRenovacion: esRenovacionFromAdminData(compra.admin_data),
-      })}
+      comercial={buildContratoComercial(
+        compraToContratoInput({
+          modelo: compra.modelo as string,
+          color: compra.color as string,
+          placa: compra.placa as string,
+          chasis: compra.chasis as string,
+          referencia: (compra.referencia as string | null) ?? null,
+          frecuencia_pago: compra.frecuencia_pago as FrecuenciaPago,
+          cuota_inicial_monto: compra.cuota_inicial_monto as number,
+          monto_cuota_periodo: compra.monto_cuota_periodo as number,
+          admin_data: compra.admin_data,
+        }),
+      )}
     />
   );
 }

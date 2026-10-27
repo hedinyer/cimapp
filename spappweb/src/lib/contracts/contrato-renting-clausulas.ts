@@ -6,6 +6,14 @@
 
 import type { FrecuenciaPago } from "../pipeline/types";
 import { FRECUENCIA_LABELS } from "../pipeline/types";
+import {
+  CALENDARIO_LEGACY,
+  type CalendarioCobro,
+  calendarioFromAdminData,
+  diasCobroPorPeriodo,
+  periodosAnuales,
+  periodosContratoFromAdminData,
+} from "../payments/calendario-cobro";
 import { formatCop } from "../utils/format-cop";
 
 export const EMPRESA_PROPIETARIA = {
@@ -70,6 +78,8 @@ export interface ContratoData {
   esRenovacion: boolean;
   /** Texto de la cláusula de duración (ej. "un 12 meses" o "324 días"). */
   duracionTexto: string;
+  /** "a las 5 p.m. de cada día" o "...de cobro (lunes a sábado)". */
+  horarioCobro: string;
 }
 
 export type CondicionMotoContrato = "nueva" | "segunda_mano" | "recuperada";
@@ -86,6 +96,9 @@ export interface CompraContratoInput {
   condicion?: CondicionMotoContrato | null;
   /** Override del plazo en días/periodos (default anual según frecuencia). */
   diasContrato?: number | null;
+  /** Número de cuotas (prioridad sobre diasContrato). */
+  periodosContrato?: number | null;
+  calendarioCobro?: CalendarioCobro;
   esRenovacion?: boolean;
 }
 
@@ -111,9 +124,39 @@ export function diasContratoFromAdminData(adminData: unknown): number | undefine
   return Number.isFinite(d) && d > 0 ? Math.floor(d) : undefined;
 }
 
+export { calendarioFromAdminData, periodosContratoFromAdminData };
+
 export function esRenovacionFromAdminData(adminData: unknown): boolean {
   if (!adminData || typeof adminData !== "object") return false;
   return (adminData as Record<string, unknown>).es_renovacion === true;
+}
+
+export function compraToContratoInput(compra: {
+  modelo: string;
+  color: string;
+  placa: string;
+  chasis: string;
+  referencia: string | null;
+  frecuencia_pago: FrecuenciaPago;
+  cuota_inicial_monto: number;
+  monto_cuota_periodo: number;
+  admin_data?: unknown;
+}): CompraContratoInput {
+  return {
+    modelo: compra.modelo,
+    color: compra.color,
+    placa: compra.placa,
+    chasis: compra.chasis,
+    referencia: compra.referencia,
+    frecuencia_pago: compra.frecuencia_pago,
+    cuota_inicial_monto: compra.cuota_inicial_monto,
+    monto_cuota_periodo: compra.monto_cuota_periodo,
+    condicion: condicionFromAdminData(compra.admin_data),
+    diasContrato: diasContratoFromAdminData(compra.admin_data),
+    periodosContrato: periodosContratoFromAdminData(compra.admin_data),
+    calendarioCobro: calendarioFromAdminData(compra.admin_data),
+    esRenovacion: esRenovacionFromAdminData(compra.admin_data),
+  };
 }
 
 export interface Clausula {
@@ -126,13 +169,6 @@ export interface ClausulaBlock {
   clausulas: Clausula[];
 }
 
-const PERIODOS_ANUALES: Record<FrecuenciaPago, number> = {
-  diario: 365,
-  semanal: 52,
-  quincenal: 24,
-  mensual: 12,
-};
-
 const PERIODO_UNIDAD: Record<FrecuenciaPago, string> = {
   diario: "CUOTAS DIARIAS",
   semanal: "CUOTAS SEMANALES",
@@ -140,18 +176,20 @@ const PERIODO_UNIDAD: Record<FrecuenciaPago, string> = {
   mensual: "CUOTAS MENSUALES",
 };
 
-/** Periodos del contrato; si hay override de días, lo usa (diario = N días). */
+/** Periodos del contrato; si hay override de cuotas o días, lo usa. */
 export function periodosContrato(
   frecuencia: FrecuenciaPago,
   diasContrato?: number | null,
+  opts?: { periodos?: number | null; calendario?: CalendarioCobro },
 ): number {
+  if (opts?.periodos != null && opts.periodos > 0) return opts.periodos;
+  const calendario = opts?.calendario ?? CALENDARIO_LEGACY;
   if (diasContrato != null && diasContrato > 0) {
     if (frecuencia === "diario") return diasContrato;
-    if (frecuencia === "semanal") return Math.max(1, Math.round(diasContrato / 7));
-    if (frecuencia === "quincenal") return Math.max(1, Math.round(diasContrato / 15));
-    if (frecuencia === "mensual") return Math.max(1, Math.round(diasContrato / 30));
+    const dias = diasCobroPorPeriodo(frecuencia, calendario);
+    return Math.max(1, Math.round(diasContrato / dias));
   }
-  return PERIODOS_ANUALES[frecuencia];
+  return periodosAnuales(frecuencia, calendario);
 }
 
 export function labelPeriodosContrato(
@@ -164,25 +202,40 @@ export function labelPeriodosContrato(
 export function duracionContratoTexto(
   frecuencia: FrecuenciaPago,
   diasContrato?: number | null,
+  opts?: { periodos?: number | null; calendario?: CalendarioCobro },
 ): string {
-  const periodos = periodosContrato(frecuencia, diasContrato);
-  if (diasContrato != null && diasContrato > 0 && frecuencia === "diario") {
-    return `${diasContrato} días`;
+  const calendario = opts?.calendario ?? CALENDARIO_LEGACY;
+  const periodos = periodosContrato(frecuencia, diasContrato, opts);
+  if (frecuencia === "diario" && periodos !== periodosAnuales("diario", calendario)) {
+    return `${periodos} días`;
   }
-  if (periodos === PERIODOS_ANUALES[frecuencia] && frecuencia === "diario") {
+  if (periodos === periodosAnuales(frecuencia, calendario) && frecuencia === "diario") {
     return "un 12 meses";
   }
-  if (frecuencia === "mensual" && periodos === 12) return "un 12 meses";
+  if (frecuencia === "mensual" && periodos === periodosAnuales("mensual", calendario)) {
+    return "un 12 meses";
+  }
   return `${periodos} ${PERIODO_UNIDAD[frecuencia].toLowerCase()}`;
+}
+
+export function horarioCobroTexto(calendario: CalendarioCobro = CALENDARIO_LEGACY): string {
+  return calendario === "lun_sab"
+    ? "a las 5 p.m. de cada día de cobro (lunes a sábado)"
+    : "a las 5 p.m. de cada día";
 }
 
 export function buildFormaPagoSaldoText(
   frecuencia: FrecuenciaPago,
   valorCuota: string,
   diasContrato?: number | null,
+  opts?: { periodos?: number | null; calendario?: CalendarioCobro },
 ): string {
-  const periodos = periodosContrato(frecuencia, diasContrato);
-  return `El saldo restante, será cancelado directamente por el CONTRANTANTE a favor de la PROPIETARIA en ${labelPeriodosContrato(frecuencia, periodos)} DE ${valorCuota} MCTE (${valorCuota}).`;
+  const periodos = periodosContrato(frecuencia, diasContrato, opts);
+  const base = `El saldo restante, será cancelado directamente por el CONTRANTANTE a favor de la PROPIETARIA en ${labelPeriodosContrato(frecuencia, periodos)} DE ${valorCuota} MCTE (${valorCuota}).`;
+  if (opts?.calendario === "lun_sab") {
+    return `${base} Las cuotas se pagan de lunes a sábado.`;
+  }
+  return base;
 }
 
 export function buildMediosPagoText(): string {
@@ -195,10 +248,11 @@ export function totalContratoMonto(
   montoCuotaPeriodo: number,
   frecuencia: FrecuenciaPago,
   diasContrato?: number | null,
+  opts?: { periodos?: number | null; calendario?: CalendarioCobro },
 ): number {
   return (
     cuotaInicial +
-    montoCuotaPeriodo * periodosContrato(frecuencia, diasContrato)
+    montoCuotaPeriodo * periodosContrato(frecuencia, diasContrato, opts)
   );
 }
 
@@ -217,10 +271,16 @@ export function buildContratoComercial(compra: CompraContratoInput): Omit<
 > {
   const valorCuota = formatCop(compra.monto_cuota_periodo);
   const cuotaInicial = formatCop(compra.cuota_inicial_monto);
-  const diasContrato =
-    compra.diasContrato != null && compra.diasContrato > 0
-      ? compra.diasContrato
-      : periodosContrato(compra.frecuencia_pago);
+  const calendario = compra.calendarioCobro ?? CALENDARIO_LEGACY;
+  const plazoOpts = {
+    periodos: compra.periodosContrato,
+    calendario,
+  };
+  const diasContrato = periodosContrato(
+    compra.frecuencia_pago,
+    compra.diasContrato,
+    plazoOpts,
+  );
   const esRenovacion = compra.esRenovacion === true;
   const total = formatCop(
     totalContratoMonto(
@@ -228,6 +288,7 @@ export function buildContratoComercial(compra: CompraContratoInput): Omit<
       compra.monto_cuota_periodo,
       compra.frecuencia_pago,
       compra.diasContrato,
+      plazoOpts,
     ),
   );
   return {
@@ -248,6 +309,7 @@ export function buildContratoComercial(compra: CompraContratoInput): Omit<
       compra.frecuencia_pago,
       valorCuota,
       compra.diasContrato,
+      plazoOpts,
     ),
     mediosPago: buildMediosPagoText(),
     diasContrato,
@@ -255,7 +317,9 @@ export function buildContratoComercial(compra: CompraContratoInput): Omit<
     duracionTexto: duracionContratoTexto(
       compra.frecuencia_pago,
       compra.diasContrato,
+      plazoOpts,
     ),
+    horarioCobro: horarioCobroTexto(calendario),
   };
 }
 
@@ -282,6 +346,15 @@ export function buildContratoDataFromStored(
     (Number.isFinite(diasFromStored) && diasFromStored > 0
       ? Math.floor(diasFromStored)
       : undefined);
+  const periodosFromStored = Number(stored.periodos_contrato);
+  const periodosContratoN =
+    compra?.periodosContrato ??
+    (Number.isFinite(periodosFromStored) && periodosFromStored > 0
+      ? Math.floor(periodosFromStored)
+      : undefined);
+  const calendarioCobro =
+    compra?.calendarioCobro ??
+    (stored.calendario_cobro === "lun_sab" ? "lun_sab" : CALENDARIO_LEGACY);
   const esRenovacion =
     compra?.esRenovacion === true || stored.es_renovacion === true;
   const comercial = buildContratoComercial({
@@ -301,6 +374,8 @@ export function buildContratoDataFromStored(
       compra?.condicion ??
       (storedEstado === "usada" ? "segunda_mano" : "nueva"),
     diasContrato,
+    periodosContrato: periodosContratoN,
+    calendarioCobro,
     esRenovacion,
   });
 
@@ -353,7 +428,7 @@ export const blocks: ClausulaBlock[] = [
       {
         titulo: "CUARTA",
         texto:
-          "El precio por el uso del bien objeto del presente contrato es por la suma total de [TOTAL_CONTRATO] ([TOTAL_CONTRATO]) M/cte., los cuales tendrán la siguiente forma de pago.\n\nPARAGRAFO PRIMERO - FORMA DE PAGO: Un primer pago equivalente a la suma de [CUOTA_INICIAL] la cual será pagadera al momento de la entrega de la motocicleta a favor del CONTRATANTE.\n\n[FORMA_PAGO_SALDO]\n\nPARAGRAFO SEGUNDO: Las cuotas diarias descritas en la presente clausula deberán ser entregadas en efectivo a favor de LA PROPIETARIA, a las 5 p.m. de cada día empezando a partir del día siguiente de la suscripción del presente contrato.\n\nEn caso de imposibilidad de parte del CONTRATANTE o la PROPIETARIA, se podrán consignar en la siguiente cuenta de [MEDIOS_PAGO]",
+          "El precio por el uso del bien objeto del presente contrato es por la suma total de [TOTAL_CONTRATO] ([TOTAL_CONTRATO]) M/cte., los cuales tendrán la siguiente forma de pago.\n\nPARAGRAFO PRIMERO - FORMA DE PAGO: Un primer pago equivalente a la suma de [CUOTA_INICIAL] la cual será pagadera al momento de la entrega de la motocicleta a favor del CONTRATANTE.\n\n[FORMA_PAGO_SALDO]\n\nPARAGRAFO SEGUNDO: Las cuotas descritas en la presente clausula deberán ser entregadas en efectivo a favor de LA PROPIETARIA, [HORARIO_COBRO] empezando a partir del día siguiente de la suscripción del presente contrato.\n\nEn caso de imposibilidad de parte del CONTRATANTE o la PROPIETARIA, se podrán consignar en la siguiente cuenta de [MEDIOS_PAGO]",
       },
     ],
   },
@@ -531,7 +606,8 @@ function applyComercialPlaceholders(text: string, form: ContratoData): string {
     .replaceAll("[MEDIOS_PAGO]", form.mediosPago)
     .replaceAll("[VALOR_CUOTA]", form.valorCuota)
     .replaceAll("[FRECUENCIA_PAGO]", form.frecuenciaPago)
-    .replaceAll("[DURACION]", form.duracionTexto);
+    .replaceAll("[DURACION]", form.duracionTexto)
+    .replaceAll("[HORARIO_COBRO]", form.horarioCobro);
 }
 
 export function tipoContratoLabel(esRenovacion: boolean): string {
@@ -652,6 +728,7 @@ export function contratoClausulasSelfCheck(): void {
     diasContrato: 365,
     esRenovacion: false,
     duracionTexto: "un 12 meses",
+    horarioCobro: "a las 5 p.m. de cada día",
   });
   if (
     !intro.includes(EMPRESA_PROPIETARIA.representante) ||
@@ -743,6 +820,31 @@ export function contratoClausulasSelfCheck(): void {
   }
   if (!rebuilt.formaPagoSaldo.includes("52 CUOTAS SEMANALES")) {
     throw new Error("buildContratoDataFromStored frecuencia");
+  }
+
+  const lunSab = buildContratoComercial({
+    modelo: "X",
+    color: "Rojo",
+    placa: "ABC123",
+    chasis: "1",
+    referencia: null,
+    frecuencia_pago: "semanal",
+    cuota_inicial_monto: 0,
+    monto_cuota_periodo: 60_000,
+    periodosContrato: 8,
+    calendarioCobro: "lun_sab",
+  });
+  if (!lunSab.formaPagoSaldo.includes("8 CUOTAS SEMANALES")) {
+    throw new Error("buildContratoComercial lun_sab cuotas");
+  }
+  if (!lunSab.formaPagoSaldo.includes("lunes a sábado")) {
+    throw new Error("buildContratoComercial lun_sab texto");
+  }
+  if (lunSab.horarioCobro.indexOf("lunes a sábado") < 0) {
+    throw new Error("buildContratoComercial horario lun_sab");
+  }
+  if (lunSab.duracionTexto !== "8 cuotas semanales") {
+    throw new Error("buildContratoComercial duracion lun_sab");
   }
   const firmaPpt = renderFirma({ ...rebuilt, tipoDocumentoContratante: "PPT" });
   if (!firmaPpt.includes("PPT 123")) {

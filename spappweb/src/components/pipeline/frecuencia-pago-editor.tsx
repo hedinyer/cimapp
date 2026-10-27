@@ -9,7 +9,9 @@ import {
   cobraCuotaAdelantada,
   cuotaDiariaFromPeriodo,
   FRECUENCIA_PERIOD,
+  FRECUENCIA_PERIOD_LUN_SAB,
 } from "@/lib/moto-payment";
+import { calendarioFromAdminData } from "@/lib/payments/calendario-cobro";
 import { puedeEditarFrecuenciaPago } from "@/lib/payments/primer-pago-progress";
 import type {
   FrecuenciaPago,
@@ -60,9 +62,13 @@ export function FrecuenciaPagoEditor({
     );
   }
 
+  const calendario = calendarioFromAdminData(compra.admin_data);
+  const periodLabels =
+    calendario === "lun_sab" ? FRECUENCIA_PERIOD_LUN_SAB : FRECUENCIA_PERIOD;
   const cuotaDiaria = cuotaDiariaFromPeriodo(
     compra.monto_cuota_periodo,
     compra.frecuencia_pago,
+    calendario,
   );
   const preview =
     frecuencia !== compra.frecuencia_pago
@@ -73,7 +79,10 @@ export function FrecuenciaPagoEditor({
             monto_visita: compra.monto_visita_monto,
           },
           frecuencia,
-          { cobraCuotaAdelantada: cobraCuotaAdelantada(compra) },
+          {
+            cobraCuotaAdelantada: cobraCuotaAdelantada(compra),
+            calendario,
+          },
         )
       : null;
 
@@ -144,7 +153,7 @@ export function FrecuenciaPagoEditor({
             onChange={(v) => setFrecuencia(v as FrecuenciaPago)}
             options={FRECUENCIAS.map((f) => ({
               value: f,
-              label: `${FRECUENCIA_LABELS[f]} · ${FRECUENCIA_PERIOD[f]}`,
+              label: `${FRECUENCIA_LABELS[f]} · ${periodLabels[f]}`,
             }))}
           />
         </div>

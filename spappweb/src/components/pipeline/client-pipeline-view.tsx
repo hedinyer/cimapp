@@ -223,7 +223,10 @@ export function ClientPipelineView({
                   contractSigned={contractSigned}
                 />
               )}
-              <ContractReadonlyPanel contract={pipeline.contract} />
+              <ContractReadonlyPanel
+                contract={pipeline.contract}
+                compra={pipeline.compra}
+              />
               {!legacyClientMoto && adminStep !== "moto" && (
                 <MotoSelectionPanel
                   contract={pipeline.contract}

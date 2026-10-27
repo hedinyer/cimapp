@@ -12,11 +12,22 @@ import {
 } from "@/lib/agent/pipeline-events";
 import { MONTO_VISITA_DEFAULT } from "@/lib/payments/visita-monto";
 import {
+  calendarioFromAdminData,
+  compraToContratoInput,
   condicionFromAdminData,
   diasContratoFromAdminData,
   esRenovacionFromAdminData,
+  periodosContratoFromAdminData,
   type CompraContratoInput,
 } from "@/lib/contracts/contrato-renting-clausulas";
+import {
+  cuotaDiariaFromPeriodo,
+  montoCuotaPeriodo,
+} from "@/lib/moto-payment";
+import {
+  CALENDARIO_LUN_SAB,
+  periodosAnuales,
+} from "@/lib/payments/calendario-cobro";
 import {
   hojaVidaFormSchema,
   hojaVidaFormToJson,
@@ -207,6 +218,7 @@ const assignMotoSchema = z.object({
   cobraCuotaAdelantada: z.boolean().optional(),
   cuotaAdelantada: z.number().int().min(0).optional(),
   condicion: z.enum(["nueva", "segunda_mano"]).optional(),
+  periodos: z.number().int().positive(),
 });
 
 export async function assignMotoByAdmin(
@@ -229,9 +241,12 @@ const updateContractHojaVidaSchema = z.object({
   contractId: z.string().uuid(),
   userId: z.number().int().positive(),
   hojaVida: hojaVidaFormSchema,
+  frecuencia: z.enum(["diario", "semanal", "quincenal", "mensual"]).optional(),
+  periodosContrato: z.number().int().positive().optional(),
+  cuotaDiaria: z.number().int().positive().optional(),
 });
 
-/** Admin corrige hoja de vida, sincroniza contrato_data y regenera PDFs si ya está firmado. */
+/** Admin corrige hoja de vida y condiciones, sincroniza contrato y regenera PDFs/talonario. */
 export async function updateContractHojaVida(
   input: z.infer<typeof updateContractHojaVidaSchema>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -242,7 +257,7 @@ export async function updateContractHojaVida(
     const { data: existing, error: fetchError } = await supabase
       .from("digital_contracts")
       .select(
-        "contrato_data, signature_path, hoja_vida_pdf_path, contrato_pdf_path, status",
+        "contrato_data, signature_path, hoja_vida_pdf_path, contrato_pdf_path, status, admin_data",
       )
       .eq("id", parsed.contractId)
       .eq("user_id", parsed.userId)
@@ -251,10 +266,128 @@ export async function updateContractHojaVida(
     if (fetchError) return { ok: false, error: mapDbError(fetchError.message) };
     if (!existing) return { ok: false, error: "Contrato no encontrado." };
 
-    const contratoData = patchContratoDataFromHoja(
+    const { data: compra } = await supabase
+      .from("user_moto_compra")
+      .select(
+        "id, modelo, color, placa, chasis, referencia, frecuencia_pago, cuota_inicial_monto, monto_cuota_periodo, monto_cuota_adelantada, monto_visita_monto, monto_total_primer_pago, estado, admin_data",
+      )
+      .eq("user_id", parsed.userId)
+      .maybeSingle();
+
+    let compraForPdf = compra;
+    const wantsCommercial =
+      parsed.frecuencia != null ||
+      parsed.periodosContrato != null ||
+      parsed.cuotaDiaria != null;
+
+    if (wantsCommercial && compra) {
+      const calendarioActual = calendarioFromAdminData(compra.admin_data);
+      const frecuenciaActual = compra.frecuencia_pago as FrecuenciaPago;
+      const diariaActual = cuotaDiariaFromPeriodo(
+        Number(compra.monto_cuota_periodo),
+        frecuenciaActual,
+        calendarioActual,
+      );
+      const periodosActuales =
+        periodosContratoFromAdminData(compra.admin_data) ??
+        periodosAnuales(frecuenciaActual, calendarioActual);
+
+      const frecuenciaNueva = parsed.frecuencia ?? frecuenciaActual;
+      const periodosNuevos = parsed.periodosContrato ?? periodosActuales;
+      const diariaNueva = parsed.cuotaDiaria ?? diariaActual;
+      const commercialChanged =
+        frecuenciaNueva !== frecuenciaActual ||
+        periodosNuevos !== periodosActuales ||
+        diariaNueva !== diariaActual;
+
+      if (commercialChanged) {
+        const montoPeriodo = montoCuotaPeriodo(
+          diariaNueva,
+          frecuenciaNueva,
+          CALENDARIO_LUN_SAB,
+        );
+        const adminData = {
+          ...((compra.admin_data as Record<string, unknown> | null) ?? {}),
+          calendario_cobro: CALENDARIO_LUN_SAB,
+          periodos_contrato: periodosNuevos,
+        };
+        const compraUpdate: Record<string, unknown> = {
+          frecuencia_pago: frecuenciaNueva,
+          monto_cuota_periodo: montoPeriodo,
+          admin_data: adminData,
+        };
+        if (compra.estado === "pendiente_pago") {
+          const adelantadaActual = Number(compra.monto_cuota_adelantada ?? 0);
+          const eraPeriodoCompleto =
+            adelantadaActual > 0 &&
+            adelantadaActual === Number(compra.monto_cuota_periodo);
+          const adelantadaNueva = eraPeriodoCompleto
+            ? montoPeriodo
+            : adelantadaActual;
+          compraUpdate.monto_cuota_adelantada = adelantadaNueva;
+          compraUpdate.monto_total_primer_pago =
+            Number(compra.cuota_inicial_monto) +
+            adelantadaNueva +
+            Number(compra.monto_visita_monto ?? 0);
+        }
+
+        const { error: compraError } = await supabase
+          .from("user_moto_compra")
+          .update(compraUpdate)
+          .eq("id", compra.id);
+        if (compraError) return { ok: false, error: mapDbError(compraError.message) };
+
+        const { count: tarifasCount } = await supabase
+          .from("tarifas_pagadas")
+          .select("id", { count: "exact", head: true })
+          .eq("user_moto_compra_id", compra.id);
+        if ((tarifasCount ?? 0) > 0) {
+          const { error: rehacerError } = await supabase.rpc(
+            "rehacer_tarifas_pendientes_compra",
+            { p_compra_id: compra.id },
+          );
+          if (rehacerError) {
+            return { ok: false, error: mapDbError(rehacerError.message) };
+          }
+        }
+
+        compraForPdf = {
+          ...compra,
+          ...compraUpdate,
+          frecuencia_pago: frecuenciaNueva,
+          monto_cuota_periodo: montoPeriodo,
+          admin_data: adminData,
+        };
+      }
+    }
+
+    let contratoData = patchContratoDataFromHoja(
       (existing.contrato_data as Record<string, unknown> | null) ?? null,
       parsed.hojaVida,
     );
+
+    if (compraForPdf?.placa) {
+      const input = compraToContratoInput({
+        modelo: compraForPdf.modelo as string,
+        color: compraForPdf.color as string,
+        placa: compraForPdf.placa as string,
+        chasis: (compraForPdf.chasis as string) ?? "",
+        referencia: (compraForPdf.referencia as string | null) ?? null,
+        frecuencia_pago: compraForPdf.frecuencia_pago as FrecuenciaPago,
+        cuota_inicial_monto: compraForPdf.cuota_inicial_monto as number,
+        monto_cuota_periodo: compraForPdf.monto_cuota_periodo as number,
+        admin_data: compraForPdf.admin_data,
+      });
+      contratoData = {
+        ...contratoData,
+        frecuencia_pago: input.frecuencia_pago,
+        valor_cuota: input.monto_cuota_periodo,
+        cuota_inicial: input.cuota_inicial_monto,
+        periodos_contrato: input.periodosContrato ?? null,
+        dias_contrato: input.periodosContrato ?? input.diasContrato ?? null,
+        calendario_cobro: input.calendarioCobro ?? null,
+      };
+    }
 
     const updatePayload: Record<string, unknown> = {
       hoja_vida_data: hojaVidaFormToJson(parsed.hojaVida),
@@ -265,28 +398,18 @@ export async function updateContractHojaVida(
     const signaturePath =
       typeof existing.signature_path === "string" ? existing.signature_path : null;
     if (existing.status === "firmado" && signaturePath) {
-      const { data: compra } = await supabase
-        .from("user_moto_compra")
-        .select(
-          "modelo, color, placa, chasis, referencia, frecuencia_pago, cuota_inicial_monto, monto_cuota_periodo, admin_data",
-        )
-        .eq("user_id", parsed.userId)
-        .maybeSingle();
-
-      const compraInput: CompraContratoInput | null = compra?.placa
-        ? {
-            modelo: compra.modelo as string,
-            color: compra.color as string,
-            placa: compra.placa as string,
-            chasis: (compra.chasis as string) ?? "",
-            referencia: (compra.referencia as string | null) ?? null,
-            frecuencia_pago: compra.frecuencia_pago as FrecuenciaPago,
-            cuota_inicial_monto: compra.cuota_inicial_monto as number,
-            monto_cuota_periodo: compra.monto_cuota_periodo as number,
-            condicion: condicionFromAdminData(compra.admin_data),
-            diasContrato: diasContratoFromAdminData(compra.admin_data),
-            esRenovacion: esRenovacionFromAdminData(compra.admin_data),
-          }
+      const compraInput: CompraContratoInput | null = compraForPdf?.placa
+        ? compraToContratoInput({
+            modelo: compraForPdf.modelo as string,
+            color: compraForPdf.color as string,
+            placa: compraForPdf.placa as string,
+            chasis: (compraForPdf.chasis as string) ?? "",
+            referencia: (compraForPdf.referencia as string | null) ?? null,
+            frecuencia_pago: compraForPdf.frecuencia_pago as FrecuenciaPago,
+            cuota_inicial_monto: compraForPdf.cuota_inicial_monto as number,
+            monto_cuota_periodo: compraForPdf.monto_cuota_periodo as number,
+            admin_data: compraForPdf.admin_data,
+          })
         : null;
 
       const paths = await regenerateSignedContractPdfs(supabase, {

@@ -1,4 +1,9 @@
 import type { BikeRow, FrecuenciaPago } from "@/lib/pipeline/types";
+import {
+  CALENDARIO_LEGACY,
+  type CalendarioCobro,
+  diasCobroPorPeriodo,
+} from "@/lib/payments/calendario-cobro";
 
 /** Piso negociable de cuota inicial (COP). 0 = sin mínimo. */
 export const MIN_CUOTA_INICIAL = 0;
@@ -18,33 +23,18 @@ export function cobraCuotaAdelantada(
 export function montoCuotaPeriodo(
   cuotaDiaria: number,
   frecuencia: FrecuenciaPago,
+  calendario: CalendarioCobro = CALENDARIO_LEGACY,
 ): number {
-  switch (frecuencia) {
-    case "diario":
-      return cuotaDiaria;
-    case "semanal":
-      return cuotaDiaria * 7;
-    case "quincenal":
-      return cuotaDiaria * 15;
-    case "mensual":
-      return cuotaDiaria * 30;
-  }
+  return cuotaDiaria * diasCobroPorPeriodo(frecuencia, calendario);
 }
 
 export function cuotaDiariaFromPeriodo(
   montoCuotaPeriodo: number,
   frecuencia: FrecuenciaPago,
+  calendario: CalendarioCobro = CALENDARIO_LEGACY,
 ): number {
-  switch (frecuencia) {
-    case "diario":
-      return montoCuotaPeriodo;
-    case "semanal":
-      return Math.round(montoCuotaPeriodo / 7);
-    case "quincenal":
-      return Math.round(montoCuotaPeriodo / 15);
-    case "mensual":
-      return Math.round(montoCuotaPeriodo / 30);
-  }
+  const dias = diasCobroPorPeriodo(frecuencia, calendario);
+  return dias === 1 ? montoCuotaPeriodo : Math.round(montoCuotaPeriodo / dias);
 }
 
 export function calcMotoPayment(
@@ -56,12 +46,18 @@ export function calcMotoPayment(
     montoVisita?: number;
     cobraCuotaAdelantada?: boolean;
     cuotaAdelantada?: number;
+    calendario?: CalendarioCobro;
   },
 ) {
   const cuota_inicial_monto = overrides?.cuotaInicial ?? bike.cuota_inicial;
   const cuotaDiaria = overrides?.cuotaDiaria ?? bike.cuota_diaria;
   const monto_visita_monto = overrides?.montoVisita ?? bike.monto_visita ?? 0;
-  const monto_cuota_periodo = montoCuotaPeriodo(cuotaDiaria, frecuencia);
+  const calendario = overrides?.calendario ?? CALENDARIO_LEGACY;
+  const monto_cuota_periodo = montoCuotaPeriodo(
+    cuotaDiaria,
+    frecuencia,
+    calendario,
+  );
 
   let monto_cuota_adelantada: number;
   if (overrides?.cuotaAdelantada != null) {
@@ -87,4 +83,11 @@ export const FRECUENCIA_PERIOD: Record<FrecuenciaPago, string> = {
   semanal: "7 días · por adelantado",
   quincenal: "15 días · por adelantado",
   mensual: "30 días · por adelantado",
+};
+
+export const FRECUENCIA_PERIOD_LUN_SAB: Record<FrecuenciaPago, string> = {
+  diario: "lun–sáb · por día",
+  semanal: "lun–sáb · 6 días por adelantado",
+  quincenal: "lun–sáb · 12 días por adelantado",
+  mensual: "lun–sáb · 24 días por adelantado",
 };

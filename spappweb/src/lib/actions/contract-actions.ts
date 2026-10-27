@@ -7,9 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildContratoComercial,
   colombiaDateParts,
-  condicionFromAdminData,
-  diasContratoFromAdminData,
-  esRenovacionFromAdminData,
+  compraToContratoInput,
   type ContratoData,
 } from "@/lib/contracts/contrato-renting-clausulas";
 import { documentoAbreviatura } from "@/lib/contracts/hoja-vida-schema";
@@ -101,19 +99,19 @@ export async function signContract(input: z.infer<typeof signSchema>) {
     fechaFirmaDia: fecha.dia,
     fechaFirmaMes: fecha.mes,
     fechaFirmaAnio: fecha.anio,
-    ...buildContratoComercial({
-      modelo: compra.modelo as string,
-      color: compra.color as string,
-      placa: compra.placa as string,
-      chasis: compra.chasis as string,
-      referencia: (compra.referencia as string | null) ?? null,
-      frecuencia_pago: compra.frecuencia_pago as FrecuenciaPago,
-      cuota_inicial_monto: compra.cuota_inicial_monto as number,
-      monto_cuota_periodo: compra.monto_cuota_periodo as number,
-      condicion: condicionFromAdminData(compra.admin_data),
-      diasContrato: diasContratoFromAdminData(compra.admin_data),
-      esRenovacion: esRenovacionFromAdminData(compra.admin_data),
-    }),
+    ...buildContratoComercial(
+      compraToContratoInput({
+        modelo: compra.modelo as string,
+        color: compra.color as string,
+        placa: compra.placa as string,
+        chasis: compra.chasis as string,
+        referencia: (compra.referencia as string | null) ?? null,
+        frecuencia_pago: compra.frecuencia_pago as FrecuenciaPago,
+        cuota_inicial_monto: compra.cuota_inicial_monto as number,
+        monto_cuota_periodo: compra.monto_cuota_periodo as number,
+        admin_data: compra.admin_data,
+      }),
+    ),
     celularContratante: String(hojaRaw.celular ?? ""),
   };
 
@@ -199,6 +197,10 @@ export async function signContract(input: z.infer<typeof signSchema>) {
         moto_estado: contratoData.estado,
         dias_contrato: contratoData.diasContrato,
         es_renovacion: contratoData.esRenovacion,
+        periodos_contrato: contratoData.diasContrato,
+        calendario_cobro:
+          (compra.admin_data as Record<string, unknown> | null)?.calendario_cobro ??
+          null,
       },
       signature_path: signaturePath,
       hoja_vida_pdf_path: hojaVidaPath,

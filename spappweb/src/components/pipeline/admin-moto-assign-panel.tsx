@@ -7,7 +7,16 @@ import {
   calcMotoPayment,
   cobraCuotaAdelantada,
   cuotaDiariaFromPeriodo,
+  FRECUENCIA_PERIOD_LUN_SAB,
 } from "@/lib/moto-payment";
+import {
+  CALENDARIO_LUN_SAB,
+  anclaPreviewYmd,
+  fechasTalonarioLunSab,
+  periodosAnuales,
+  periodosContratoFromAdminData,
+} from "@/lib/payments/calendario-cobro";
+import { formatDateOnly } from "@/lib/utils/format-date";
 import { MONTO_VISITA_DEFAULT } from "@/lib/payments/visita-monto";
 import type { BikeRow, FrecuenciaPago, UserMotoCompraRow } from "@/lib/pipeline/types";
 import { FRECUENCIA_LABELS } from "@/lib/pipeline/types";
@@ -43,8 +52,13 @@ function initialForm(compra: UserMotoCompraRow | null) {
       montoVisita: null as number | null,
       cuotaAdelantada: null as number | null,
       condicion: "nueva" as "nueva" | "segunda_mano",
+      periodos: periodosAnuales("semanal", CALENDARIO_LUN_SAB),
     };
   }
+  const calendario =
+    compra.admin_data?.calendario_cobro === "lun_sab"
+      ? CALENDARIO_LUN_SAB
+      : "lun_dom";
   return {
     bikeId: compra.bike_id ? String(compra.bike_id) : "",
     frecuencia: compra.frecuencia_pago,
@@ -52,6 +66,7 @@ function initialForm(compra: UserMotoCompraRow | null) {
     cuotaDiaria: cuotaDiariaFromPeriodo(
       compra.monto_cuota_periodo,
       compra.frecuencia_pago,
+      calendario,
     ),
     montoVisita: compra.monto_visita_monto,
     cuotaAdelantada:
@@ -61,6 +76,9 @@ function initialForm(compra: UserMotoCompraRow | null) {
       compra.admin_data?.condicion === "segunda_mano"
         ? ("segunda_mano" as const)
         : ("nueva" as const),
+    periodos:
+      periodosContratoFromAdminData(compra.admin_data) ??
+      periodosAnuales(compra.frecuencia_pago, CALENDARIO_LUN_SAB),
   };
 }
 
@@ -85,6 +103,8 @@ export function AdminMotoAssignPanel({
   const [condicion, setCondicion] = useState<"nueva" | "segunda_mano">(
     init.condicion,
   );
+  const [periodos, setPeriodos] = useState<number>(init.periodos);
+  const [periodosTouched, setPeriodosTouched] = useState(false);
 
   const activeBikes = bikes.filter((b) => b.activo);
   const selectedBike = activeBikes.find((b) => String(b.id) === bikeId);
@@ -107,6 +127,7 @@ export function AdminMotoAssignPanel({
     setMontoVisita(bike.monto_visita ?? MONTO_VISITA_DEFAULT);
     const periodo = calcMotoPayment(bike, nextFrecuencia, {
       cuotaDiaria: bike.cuota_diaria,
+      calendario: CALENDARIO_LUN_SAB,
     }).monto_cuota_periodo;
     setCuotaAdelantada(periodo);
   }
@@ -130,6 +151,7 @@ export function AdminMotoAssignPanel({
           cuotaDiaria: parsedDiaria,
           montoVisita: parsedVisita,
           cuotaAdelantada: parsedAdelantada,
+          calendario: CALENDARIO_LUN_SAB,
         })
       : null;
 
@@ -137,16 +159,28 @@ export function AdminMotoAssignPanel({
     selectedBike && Number.isFinite(parsedDiaria) && parsedDiaria > 0
       ? calcMotoPayment(selectedBike, frecuencia, {
           cuotaDiaria: parsedDiaria,
+          calendario: CALENDARIO_LUN_SAB,
         }).monto_cuota_periodo
       : null;
+
+  const fechasPreview =
+    Number.isInteger(periodos) && periodos > 0
+      ? fechasTalonarioLunSab({
+          anclaYmd: anclaPreviewYmd(),
+          frecuencia,
+          periodos,
+        })
+      : [];
+  const primeraFecha = fechasPreview[0];
+  const ultimaFecha = fechasPreview[fechasPreview.length - 1];
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Asignar moto y placa</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Elige la moto e indica la cuota inicial, adelantada y visita acordadas
-          (pueden ser $0). El catálogo es solo referencia.
+            Elige la moto, la duración en cuotas y la periodicidad. Las cuotas
+          se pagan de lunes a sábado. El catálogo es solo referencia.
         </p>
       </CardHeader>
       <CardContent>
@@ -182,6 +216,10 @@ export function AdminMotoAssignPanel({
               );
               return;
             }
+            if (!Number.isInteger(periodos) || periodos < 1) {
+              toast.error("Indica cuántas cuotas dura el contrato.");
+              return;
+            }
             startTransition(async () => {
               try {
                 await assignMotoByAdmin({
@@ -198,6 +236,7 @@ export function AdminMotoAssignPanel({
                   montoVisita: parsedVisita,
                   cuotaAdelantada: parsedAdelantada,
                   condicion,
+                  periodos,
                 });
                 toast.success(
                   "Moto asignada. Envía el link de contrato al cliente.",
@@ -253,15 +292,18 @@ export function AdminMotoAssignPanel({
                 onChange={(v) => {
                   const next = v as FrecuenciaPago;
                   setFrecuencia(next);
+                  if (!periodosTouched) {
+                    setPeriodos(periodosAnuales(next, CALENDARIO_LUN_SAB));
+                  }
                   if (selectedBike && cuotaDiaria != null && cuotaDiaria > 0) {
                     const periodo = calcMotoPayment(selectedBike, next, {
                       cuotaDiaria,
+                      calendario: CALENDARIO_LUN_SAB,
                     }).monto_cuota_periodo;
-                    // Si la adelantada coincidía con el periodo anterior, actualizarla
                     const prevPeriodo = calcMotoPayment(
                       selectedBike,
                       frecuencia,
-                      { cuotaDiaria },
+                      { cuotaDiaria, calendario: CALENDARIO_LUN_SAB },
                     ).monto_cuota_periodo;
                     if (
                       cuotaAdelantada == null ||
@@ -273,9 +315,29 @@ export function AdminMotoAssignPanel({
                 }}
                 options={FRECUENCIAS.map((f) => ({
                   value: f,
-                  label: FRECUENCIA_LABELS[f],
+                  label: `${FRECUENCIA_LABELS[f]} · ${FRECUENCIA_PERIOD_LUN_SAB[f]}`,
                 }))}
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="assign-periodos">Número de cuotas</Label>
+              <Input
+                id="assign-periodos"
+                type="number"
+                min={1}
+                step={1}
+                value={periodos}
+                onChange={(e) => {
+                  const n = Number(e.target.value);
+                  setPeriodosTouched(true);
+                  setPeriodos(Number.isFinite(n) ? Math.floor(n) : 0);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Duración del contrato. Un año de cobro lun–sáb son{" "}
+                {periodosAnuales(frecuencia, CALENDARIO_LUN_SAB)} cuotas{" "}
+                {FRECUENCIA_LABELS[frecuencia].toLowerCase()}.
+              </p>
             </div>
             {selectedBike && (
               <>
@@ -318,12 +380,16 @@ export function AdminMotoAssignPanel({
                         const periodo = calcMotoPayment(
                           selectedBike,
                           frecuencia,
-                          { cuotaDiaria: v },
+                          {
+                            cuotaDiaria: v,
+                            calendario: CALENDARIO_LUN_SAB,
+                          },
                         ).monto_cuota_periodo;
                         const prev =
                           cuotaDiaria != null && cuotaDiaria > 0
                             ? calcMotoPayment(selectedBike, frecuencia, {
                                 cuotaDiaria,
+                                calendario: CALENDARIO_LUN_SAB,
                               }).monto_cuota_periodo
                             : null;
                         if (
@@ -414,9 +480,17 @@ export function AdminMotoAssignPanel({
                     </p>
                     <p className="mt-1 text-xs text-emerald-800/80">
                       {paymentPreview.monto_cuota_adelantada > 0
-                        ? `Adelantada ${formatCop(paymentPreview.monto_cuota_adelantada)}. Cuota periódica ${formatCop(paymentPreview.monto_cuota_periodo)} (${FRECUENCIA_LABELS[frecuencia].toLowerCase()}).`
-                        : `Sin adelantada. Cuota periódica ${formatCop(paymentPreview.monto_cuota_periodo)} (${FRECUENCIA_LABELS[frecuencia].toLowerCase()}) desde la entrega.`}
+                        ? `Adelantada ${formatCop(paymentPreview.monto_cuota_adelantada)}. Cuota periódica ${formatCop(paymentPreview.monto_cuota_periodo)} (${FRECUENCIA_LABELS[frecuencia].toLowerCase()}, lun–sáb).`
+                        : `Sin adelantada. Cuota periódica ${formatCop(paymentPreview.monto_cuota_periodo)} (${FRECUENCIA_LABELS[frecuencia].toLowerCase()}, lun–sáb) desde la entrega.`}
                     </p>
+                    {periodos > 0 && primeraFecha && ultimaFecha && (
+                      <p className="mt-1 text-xs text-emerald-800/80">
+                        {periodos} cuotas de{" "}
+                        {formatCop(paymentPreview.monto_cuota_periodo)}.
+                        Ejemplo de vencimientos: {formatDateOnly(primeraFecha)}{" "}
+                        a {formatDateOnly(ultimaFecha)} (ninguno en domingo).
+                      </p>
+                    )}
                   </div>
                 )}
               </>

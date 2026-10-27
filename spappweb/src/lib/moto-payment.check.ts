@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { CALENDARIO_LUN_SAB } from "./payments/calendario-cobro.ts";
 import {
   calcMotoPayment,
   cobraCuotaAdelantada,
   MIN_CUOTA_INICIAL,
+  montoCuotaPeriodo,
 } from "./moto-payment.ts";
 
 assert.equal(MIN_CUOTA_INICIAL, 0);
@@ -52,5 +54,16 @@ assert.equal(
   cobraCuotaAdelantada({ monto_cuota_adelantada: 10_000 }),
   true,
 );
+
+assert.equal(montoCuotaPeriodo(10_000, "semanal"), 70_000);
+assert.equal(montoCuotaPeriodo(10_000, "semanal", CALENDARIO_LUN_SAB), 60_000);
+assert.equal(montoCuotaPeriodo(10_000, "quincenal", CALENDARIO_LUN_SAB), 120_000);
+assert.equal(montoCuotaPeriodo(10_000, "mensual", CALENDARIO_LUN_SAB), 240_000);
+
+const lunSab = calcMotoPayment(bike, "semanal", {
+  cuotaDiaria: 10_000,
+  calendario: CALENDARIO_LUN_SAB,
+});
+assert.equal(lunSab.monto_cuota_periodo, 60_000);
 
 console.log("moto-payment.check OK");
