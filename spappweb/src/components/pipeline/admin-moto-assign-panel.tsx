@@ -17,7 +17,10 @@ import {
   periodosContratoFromAdminData,
 } from "@/lib/payments/calendario-cobro";
 import { formatDateOnly } from "@/lib/utils/format-date";
-import { MONTO_VISITA_DEFAULT } from "@/lib/payments/visita-monto";
+import {
+  COBRA_VISITA_DOMICILIARIA,
+  MONTO_VISITA_DEFAULT,
+} from "@/lib/payments/visita-monto";
 import type { BikeRow, FrecuenciaPago, UserMotoCompraRow } from "@/lib/pipeline/types";
 import { FRECUENCIA_LABELS } from "@/lib/pipeline/types";
 import { formatCop } from "@/lib/utils/format";
@@ -134,7 +137,9 @@ export function AdminMotoAssignPanel({
 
   const parsedInicial = cuotaInicial ?? Number.NaN;
   const parsedDiaria = cuotaDiaria ?? Number.NaN;
-  const parsedVisita = montoVisita ?? Number.NaN;
+  const parsedVisita = COBRA_VISITA_DOMICILIARIA
+    ? (montoVisita ?? Number.NaN)
+    : 0;
   const parsedAdelantada = cuotaAdelantada ?? Number.NaN;
 
   const paymentPreview =
@@ -206,7 +211,10 @@ export function AdminMotoAssignPanel({
               toast.error("Indica una cuota diaria válida.");
               return;
             }
-            if (!Number.isFinite(parsedVisita) || parsedVisita < 0) {
+            if (
+              COBRA_VISITA_DOMICILIARIA &&
+              (!Number.isFinite(parsedVisita) || parsedVisita < 0)
+            ) {
               toast.error("Indica un monto de visita válido (puede ser $0).");
               return;
             }
@@ -438,21 +446,25 @@ export function AdminMotoAssignPanel({
                     )}
                   </p>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="monto-visita">Monto visita domiciliaria</Label>
-                  <CurrencyInput
-                    id="monto-visita"
-                    value={montoVisita}
-                    onValueChange={setMontoVisita}
-                    min={0}
-                    placeholder={String(
-                      selectedBike.monto_visita ?? MONTO_VISITA_DEFAULT,
-                    )}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Valor de la visita al domicilio (puede ser $0).
-                  </p>
-                </div>
+                {COBRA_VISITA_DOMICILIARIA ? (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="monto-visita">
+                      Monto visita domiciliaria
+                    </Label>
+                    <CurrencyInput
+                      id="monto-visita"
+                      value={montoVisita}
+                      onValueChange={setMontoVisita}
+                      min={0}
+                      placeholder={String(
+                        selectedBike.monto_visita ?? MONTO_VISITA_DEFAULT,
+                      )}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Valor de la visita al domicilio (puede ser $0).
+                    </p>
+                  </div>
+                ) : null}
                 {paymentPreview && (
                   <div className="sm:col-span-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm">
                     <p className="font-medium text-emerald-900">

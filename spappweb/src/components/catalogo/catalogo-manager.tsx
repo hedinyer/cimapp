@@ -6,7 +6,10 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Bike, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteBike, saveBike } from "@/lib/actions/admin-actions";
-import { MONTO_VISITA_DEFAULT } from "@/lib/payments/visita-monto";
+import {
+  COBRA_VISITA_DOMICILIARIA,
+  MONTO_VISITA_DEFAULT,
+} from "@/lib/payments/visita-monto";
 import type { BikeRow } from "@/lib/pipeline/types";
 import { formatCop } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
@@ -502,12 +505,14 @@ function BikeDialog({
             onChange={setCuotaDiaria}
             type="number"
           />
-          <Field
-            label="Monto visita domiciliaria"
-            value={montoVisita}
-            onChange={setMontoVisita}
-            type="number"
-          />
+          {COBRA_VISITA_DOMICILIARIA ? (
+            <Field
+              label="Monto visita domiciliaria"
+              value={montoVisita}
+              onChange={setMontoVisita}
+              type="number"
+            />
+          ) : null}
           <div className="sm:col-span-2">
             <ImageFileField
               label="Foto de la moto"
@@ -549,7 +554,9 @@ function BikeDialog({
                 stock: Number(stock),
                 cuotaInicial: Number(cuotaInicial),
                 cuotaDiaria: Number(cuotaDiaria),
-                montoVisita: Number(montoVisita),
+                montoVisita: COBRA_VISITA_DOMICILIARIA
+                  ? Number(montoVisita)
+                  : 0,
                 precioVenta: precioVenta.trim()
                   ? Number(precioVenta)
                   : null,

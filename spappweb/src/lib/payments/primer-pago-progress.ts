@@ -1,4 +1,5 @@
 import type { PagoRow, UserMotoCompraRow } from "@/lib/pipeline/types";
+import { COBRA_VISITA_DOMICILIARIA } from "@/lib/payments/visita-monto";
 
 export type PrimerPagoConcepto = "inicial" | "cuota_adelantada" | "visita";
 
@@ -156,6 +157,7 @@ export function puedeEditarMontoVisita(
   compra: UserMotoCompraRow,
   pagos: PagoRow[],
 ): boolean {
+  if (!COBRA_VISITA_DOMICILIARIA) return false;
   if (
     compra.estado === "entregada" ||
     compra.estado === "saldada" ||

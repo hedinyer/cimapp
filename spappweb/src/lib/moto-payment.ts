@@ -4,6 +4,7 @@ import {
   type CalendarioCobro,
   diasCobroPorPeriodo,
 } from "@/lib/payments/calendario-cobro";
+import { COBRA_VISITA_DOMICILIARIA } from "@/lib/payments/visita-monto";
 
 /** Piso negociable de cuota inicial (COP). 0 = sin mínimo. */
 export const MIN_CUOTA_INICIAL = 0;
@@ -51,7 +52,9 @@ export function calcMotoPayment(
 ) {
   const cuota_inicial_monto = overrides?.cuotaInicial ?? bike.cuota_inicial;
   const cuotaDiaria = overrides?.cuotaDiaria ?? bike.cuota_diaria;
-  const monto_visita_monto = overrides?.montoVisita ?? bike.monto_visita ?? 0;
+  const monto_visita_monto = COBRA_VISITA_DOMICILIARIA
+    ? (overrides?.montoVisita ?? bike.monto_visita ?? 0)
+    : 0;
   const calendario = overrides?.calendario ?? CALENDARIO_LEGACY;
   const monto_cuota_periodo = montoCuotaPeriodo(
     cuotaDiaria,

@@ -104,9 +104,7 @@ export function MotoSelectionPanel({
   const adelantadaNum = parseMonto(cuotaAdelantada);
   const cobraAdelantada = cobraCuotaAdelantada(compra);
   const totalPreview =
-    (inicialNum ?? 0) +
-    (cobraAdelantada ? (adelantadaNum ?? 0) : 0) +
-    (compra.monto_visita_monto ?? 0);
+    (inicialNum ?? 0) + (cobraAdelantada ? (adelantadaNum ?? 0) : 0);
 
   function saveForm(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

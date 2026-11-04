@@ -13,16 +13,15 @@ import {
 } from "@/lib/payments/primer-pago-progress";
 import type { PagoRow, UserMotoCompraRow } from "@/lib/pipeline/types";
 import { CONTEXTO_PAGO_LABELS } from "@/lib/pipeline/types";
+import { COBRA_VISITA_DOMICILIARIA } from "@/lib/payments/visita-monto";
 import { formatCop } from "@/lib/utils/format";
 import { Button } from "@/components/ui/button";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 
-const CONCEPTOS: PrimerPagoConcepto[] = [
-  "inicial",
-  "cuota_adelantada",
-  "visita",
-];
+const CONCEPTOS: PrimerPagoConcepto[] = COBRA_VISITA_DOMICILIARIA
+  ? ["inicial", "cuota_adelantada", "visita"]
+  : ["inicial", "cuota_adelantada"];
 
 export function AcuerdoTable({
   compra,

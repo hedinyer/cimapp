@@ -26,7 +26,10 @@ import {
   sumAbonos,
   type PrimerPagoConcepto,
 } from "@/lib/payments/primer-pago-progress";
-import { MONTO_VISITA_DEFAULT } from "@/lib/payments/visita-monto";
+import {
+  COBRA_VISITA_DOMICILIARIA,
+  MONTO_VISITA_DEFAULT,
+} from "@/lib/payments/visita-monto";
 import type {
   ContextoPago,
   MedioPagoAdmin,
@@ -102,7 +105,8 @@ export function PaymentConfirmPanel({
   const canEditFrecuencia = puedeEditarFrecuenciaPago(compra, pagos);
   const cobraAdelantada = cobraCuotaAdelantada(compra);
   const showVisitaSection =
-    compra.monto_visita_monto > 0 || canEditMontoVisita;
+    COBRA_VISITA_DOMICILIARIA &&
+    (compra.monto_visita_monto > 0 || canEditMontoVisita);
 
   function openAbonoDialog(
     contexto: PrimerPagoConcepto,

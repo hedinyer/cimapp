@@ -8,6 +8,7 @@ import {
   CALENDARIO_LUN_SAB,
   periodosAnuales,
 } from "@/lib/payments/calendario-cobro";
+import { COBRA_VISITA_DOMICILIARIA } from "@/lib/payments/visita-monto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { FrecuenciaPago } from "@/lib/pipeline/types";
 
@@ -184,7 +185,9 @@ export async function assignMotoByAdminOp(
 
   const cuotaInicial = parsed.cuotaInicial;
   const cuotaDiaria = parsed.cuotaDiaria ?? (bike.cuota_diaria as number);
-  const montoVisita = parsed.montoVisita ?? (bike.monto_visita as number);
+  const montoVisita = COBRA_VISITA_DOMICILIARIA
+    ? (parsed.montoVisita ?? (bike.monto_visita as number))
+    : 0;
 
   if (cuotaInicial < 0) {
     throw new Error("La cuota inicial no puede ser negativa.");

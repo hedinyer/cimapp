@@ -19,6 +19,7 @@ import {
   primerPagoCubierto,
   type PrimerPagoConcepto,
 } from "@/lib/payments/primer-pago-progress";
+import { COBRA_VISITA_DOMICILIARIA } from "@/lib/payments/visita-monto";
 import type { FrecuenciaPago } from "@/lib/pipeline/types";
 import { getStoragePublicUrl } from "@/lib/utils/storage-urls";
 import {
@@ -807,6 +808,10 @@ export async function updateMontoVisitaCompra(input: {
     })
     .parse(input);
 
+  if (!COBRA_VISITA_DOMICILIARIA) {
+    throw new Error("CIM no cobra visita domiciliaria; la asume la empresa.");
+  }
+
   const supabase = await assertAdmin();
 
   const { data: compra, error: compraError } = await supabase
@@ -1107,6 +1112,8 @@ export async function updateAcuerdoPrimerPago(input: {
     })
     .parse(input);
 
+  const montoVisita = COBRA_VISITA_DOMICILIARIA ? parsed.montoVisita : 0;
+
   const supabase = await assertAdmin();
 
   const { data: compra, error: compraError } = await supabase
@@ -1152,7 +1159,7 @@ export async function updateAcuerdoPrimerPago(input: {
       `Ya se recibieron ${recibidoCuota.toLocaleString("es-CO")} de cuota adelantada; el monto no puede ser menor.`,
     );
   }
-  if (parsed.montoVisita < recibidoVisita) {
+  if (montoVisita < recibidoVisita) {
     throw new Error(
       `Ya se recibieron ${recibidoVisita.toLocaleString("es-CO")} por visita; el monto no puede ser menor.`,
     );
@@ -1160,14 +1167,14 @@ export async function updateAcuerdoPrimerPago(input: {
 
   const cobraAdelantada = parsed.montoCuotaAdelantada > 0;
   const montoTotal =
-    parsed.cuotaInicial + parsed.montoCuotaAdelantada + parsed.montoVisita;
+    parsed.cuotaInicial + parsed.montoCuotaAdelantada + montoVisita;
 
   const { error: updateError } = await supabase
     .from("user_moto_compra")
     .update({
       cuota_inicial_monto: parsed.cuotaInicial,
       monto_cuota_adelantada: parsed.montoCuotaAdelantada,
-      monto_visita_monto: parsed.montoVisita,
+      monto_visita_monto: montoVisita,
       monto_total_primer_pago: montoTotal,
       admin_data: {
         ...((compra.admin_data as Record<string, unknown> | null) ?? {}),

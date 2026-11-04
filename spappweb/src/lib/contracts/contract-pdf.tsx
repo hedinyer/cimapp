@@ -288,9 +288,8 @@ export async function generateHojaVidaPdf(args: {
         <Line>{`PLACA ASIGNADA: ${c?.placa ?? "_____________________"}`}</Line>
         <Line>{`CHASIS: ${c?.chasis ?? "______________"} COLOR: ${c?.color ?? "________________"} REFERENCIA: ${c?.referencia ?? "___________"}`}</Line>
         <Line>{`MODELO: ${c?.modelo ?? "__________"}`}</Line>
-        <Line>VISITA DOMICILIARIA: ________________________________</Line>
         <Text style={styles.sectionTitle}>FORMA DE PAGO</Text>
-        <Line>{`CUOTA INICIAL ${c?.cuotaInicial ?? "$__________"} VISITA DOMICILIARIA $ ________ FECHA: ___________`}</Line>
+        <Line>{`CUOTA INICIAL ${c?.cuotaInicial ?? "$__________"} FECHA: ___________`}</Line>
         <Line>MEDIO EFECTIVO ___ NEQUI _____BANCOLOMBIA ___ DAVIPLATA __DAVIVIENDA</Line>
         <Line>MEDIO PAGO-REFRENCIA ________ ____________ _________ _________________</Line>
         <Line>{`VALOR CUOTA: ${c?.valorCuota ?? "$ __________"} TIEMPO: ${c?.frecuenciaPago ?? "________"} MODALIDAD PAGO: ${c?.frecuenciaPago ?? "__________"}`}</Line>
