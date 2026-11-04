@@ -1,6 +1,5 @@
 /**
- * Texto legal del Contrato de Renting (plantilla configurable).
- * Completar EMPRESA_PROPIETARIA antes de producir PDFs firmados.
+ * Texto legal: Contrato de Renting Operativo de Motocicleta (plantilla CIM).
  * Placeholders comerciales los completa la asignación de moto al firmar.
  */
 
@@ -17,23 +16,23 @@ import {
 import { formatCop } from "../utils/format-cop";
 
 export const EMPRESA_PROPIETARIA = {
-  razonSocial: "CONFIGURAR",
-  razonSocialCorto: "CONFIGURAR",
-  representante: "CONFIGURAR",
-  cedula: "",
-  ciudad: "CONFIGURAR",
-  nit: "",
+  razonSocial: "CIM – Comercializadora Internacional Automotriz S.A.S.",
+  razonSocialCorto: "CIM",
+  representante: "Daniel Enrique Londoño Palacio",
+  cedula: "C.C. 1.047.409.769",
+  ciudad: "Cartagena",
+  nit: "901.913.624-2",
   email: "",
-  direccion: "",
+  direccion: "Pie de la Popa, Cra. 32 # 19 – 142, Cartagena",
   daviviendaConvenio: "",
   llave: "",
   daviplata: "",
   daviplataTitular: "",
   comprobanteBera: "",
   comprobanteNkd: "",
-  marcaMoto: "CONFIGURAR",
+  marcaMoto: "BERA",
   logoFile: "logo-cim.png",
-  firmaFile: "", // CONFIGURAR: path a firma en /public
+  firmaFile: "firma-daniel-londono.png",
 } as const;
 
 /** Marca comercial según el modelo de catálogo (NKD125 → AKT, BERA150 → BERA). */
@@ -231,7 +230,7 @@ export function buildFormaPagoSaldoText(
   opts?: { periodos?: number | null; calendario?: CalendarioCobro },
 ): string {
   const periodos = periodosContrato(frecuencia, diasContrato, opts);
-  const base = `El saldo restante, será cancelado directamente por el CONTRANTANTE a favor de la PROPIETARIA en ${labelPeriodosContrato(frecuencia, periodos)} DE ${valorCuota} MCTE (${valorCuota}).`;
+  const base = `El saldo restante será cancelado por EL ARRENDATARIO a favor de CIM en ${labelPeriodosContrato(frecuencia, periodos)} DE ${valorCuota} MCTE (${valorCuota}).`;
   if (opts?.calendario === "lun_sab") {
     return `${base} Las cuotas se pagan de lunes a sábado.`;
   }
@@ -239,8 +238,7 @@ export function buildFormaPagoSaldoText(
 }
 
 export function buildMediosPagoText(): string {
-  const e = EMPRESA_PROPIETARIA;
-  return `DAVIVIENDA CONVENIO ${e.daviviendaConvenio} O POR LA LLAVE ${e.llave} de titularidad de ${e.razonSocialCorto} Ó DAVIPLATA ${e.daviplata} a nombre de ${e.daviplataTitular}. Numero autorizado de pasar el comprobante de pago para moto BERA ${e.comprobanteBera} Y para moto NKD ${e.comprobanteNkd} con nombre y placa`;
+  return `efectivo o Bancolombia a nombre de ${EMPRESA_PROPIETARIA.razonSocialCorto}`;
 }
 
 export function totalContratoMonto(
@@ -404,172 +402,203 @@ export function buildContratoDataFromStored(
   };
 }
 
-export const introTemplate = `El día [DIA] del mes de [MES] de [ANIO], en la ciudad de ${EMPRESA_PROPIETARIA.ciudad}, entre los suscrito a saber, ${EMPRESA_PROPIETARIA.representante}, mayor de edad, vecina y domiciliada en la ciudad de ${EMPRESA_PROPIETARIA.ciudad}, identificada como aparece al pie de su firma, quien en adelante se denominará LA PROPIETARIA, y por otro [NOMBRE_CONTRATANTE], mayor de edad, vecino y domiciliado en ${EMPRESA_PROPIETARIA.ciudad}, quien se identifica como aparece al pie de su firma y en adelante se denominará quien en adelante será denominado "EL CONTRATANTE", acuerdan celebrar un "[TIPO_CONTRATO]" regido por las siguientes cláusulas:`;
+export const introTemplate = `Entre los suscritos, de una parte, ${EMPRESA_PROPIETARIA.representante} mayor de edad, domiciliado en la ciudad de ${EMPRESA_PROPIETARIA.ciudad}, identificado con cédula de ciudadanía Nº 1.047.409.769, actuando en calidad de representante legal de ${EMPRESA_PROPIETARIA.razonSocial}, sociedad mercantil domiciliada en ${EMPRESA_PROPIETARIA.ciudad}, identificada con el Nit # ${EMPRESA_PROPIETARIA.nit}, ubicada en ${EMPRESA_PROPIETARIA.direccion}, quien en adelante se denominará indistintamente EL ARRENDADOR o CIM; y de otra, [NOMBRE_CONTRATANTE], identificado(a) con [TIPO_DOC_CONTRATANTE] No. [CEDULA_CONTRATANTE], domiciliado(a) en [DIRECCION_NOTIFICACIONES], [CIUDAD_CONTRATANTE] ([DEPARTAMENTO_CONTRATANTE]), quien en adelante se denominará EL ARRENDATARIO, se celebra el presente [TIPO_CONTRATO], regido por las siguientes cláusulas:`;
 
 export const blocks: ClausulaBlock[] = [
   {
-    title: "Cláusulas 1 a 4",
+    title: "Cláusulas 1 a 5",
     clausulas: [
       {
-        titulo: "PRIMERA – OBJETO",
+        titulo: "PRIMERA. OBJETO.",
         texto:
-          "En virtud del presente contrato, LA PROPIETARIA entrega a título de renting y estos reciben de aquella, la simple tenencia del bien objeto del presente contrato, por el tiempo que aquí mismo se estipula. EL CONTRATANTE, como contraprestación pagará LA PROPIETARIA una remuneración, seguido de un pago diario durante la vigencia del contrato, y a su vencimiento podrá optar por alguna de las opciones de que trata la Décima cuarta del presente contrato.\n\nEl siguiente bien mueble de titularidad de la PROPIETARIA:\n\nMARCA: [MARCA]    MODELO: [MODELO]    LINEA: [LINEA]    ESTADO: [ESTADO]\nCHASIS: [CHASIS]  MOTOR: [MOTOR]      PLACA: [PLACA]    COLOR: [COLOR]",
+          "Por medio del presente contrato, EL ARRENDADOR entrega a EL ARRENDATARIO, a título de arrendamiento operativo (renting), el uso y goce temporal de la motocicleta identificada en el Anexo de Condiciones Particulares y Acta de Entrega. CIM conserva la propiedad del vehículo durante toda la vigencia del contrato.",
       },
       {
-        titulo: "SEGUNDA",
+        titulo: "SEGUNDA. IDENTIFICACIÓN DEL VEHÍCULO.",
         texto:
-          "EL CONTRATANTE reconoce recibir en perfecto estado de uso y a su entera satisfacción el bien descrito en la cláusula primera del presente contrato, conoce la situación jurídica del bien, esto es, que se trata de un bien sin limitaciones al dominio, embargos y/o medidas cautelares.",
+          "Marca: [MARCA]. Línea/referencia: [REFERENCIA]. Modelo: [MODELO]. Color: [COLOR]. Placa: [PLACA]. VIN/chasis: [CHASIS]. Motor: [MOTOR]. Estado: [ESTADO]. Los demás datos constarán en el Acta de Entrega.",
       },
       {
-        titulo: "TERCERA – DURACIÓN",
+        titulo: "TERCERA. NATURALEZA DEL CONTRATO.",
         texto:
-          "El término del presente contrato es de [DURACION] contado a partir del día siguiente de la suscripción del presente contrato.",
+          "Las partes declaran que el negocio tiene como finalidad principal permitir el uso temporal de un activo de propiedad de CIM a cambio de un canon. No constituye compraventa, promesa de compraventa, financiación de adquisición ni transferencia de dominio. El tratamiento jurídico y tributario deberá atender la naturaleza económica de la operación y la legislación vigente.",
       },
       {
-        titulo: "CUARTA",
+        titulo: "CUARTA. PROPIEDAD Y AUSENCIA DE TRANSFERENCIA AUTOMÁTICA.",
         texto:
-          "El precio por el uso del bien objeto del presente contrato es por la suma total de [TOTAL_CONTRATO] ([TOTAL_CONTRATO]) M/cte., los cuales tendrán la siguiente forma de pago.\n\nPARAGRAFO PRIMERO - FORMA DE PAGO: Un primer pago equivalente a la suma de [CUOTA_INICIAL] la cual será pagadera al momento de la entrega de la motocicleta a favor del CONTRATANTE.\n\n[FORMA_PAGO_SALDO]\n\nPARAGRAFO SEGUNDO: Las cuotas descritas en la presente clausula deberán ser entregadas en efectivo a favor de LA PROPIETARIA, [HORARIO_COBRO] empezando a partir del día siguiente de la suscripción del presente contrato.\n\nEn caso de imposibilidad de parte del CONTRATANTE o la PROPIETARIA, se podrán consignar en la siguiente cuenta de [MEDIOS_PAGO]",
+          "La propiedad de la motocicleta permanece en CIM. La terminación del contrato, el pago total de los cánones o la restitución del vehículo no generan por sí mismos transferencia de dominio a favor de EL ARRENDATARIO.",
+      },
+      {
+        titulo: "QUINTA. EVENTUAL VENTA POSTERIOR.",
+        texto:
+          "Al finalizar el contrato, CIM podrá, si comercialmente lo considera conveniente, ofrecer la motocicleta en venta. Cualquier venta deberá instrumentarse mediante negocio jurídico independiente y a un precio determinado con criterios comerciales y de mercado. Este contrato no contiene una opción de compra automática ni establece un precio residual obligatorio de transferencia.",
       },
     ],
   },
   {
-    title: "Cláusulas 5 a 7",
+    title: "Cláusulas 6 a 10",
     clausulas: [
       {
-        titulo: "QUINTA",
+        titulo: "SEXTA. PLAZO.",
         texto:
-          "Se entenderá como día de uso el de los de desplazamiento de la máquina.",
+          "El plazo será de [DURACION], contado desde la fecha de entrega material. La prórroga requerirá acuerdo escrito de las partes, salvo renovación expresamente prevista en las Condiciones Particulares.",
       },
       {
-        titulo: "SEXTA – DESTINACIÓN",
+        titulo: "SÉPTIMA. CANON.",
         texto:
-          "El bien objeto del presente contrato será utilizado solamente por EL COTRATANTE, siendo responsables por la utilización del mismo, su conservación y mantenimiento. El bien será utilizado para los fines a los cuales está destinado según su naturaleza, con el cuidado debido. Se entenderá como uso normal, el derivado del uso personal o de la explotación comercial del mismo en la prestación del servicio de mensajería. El uso del bien solo se podrá realizar dentro de los límites del Área Metropolitana de [CIUDAD_EMPRESA].\n\nEL CONTRATANTE, tendrá a su cargo todos los gastos de funcionamiento y mantenimiento del bien y en especial los repuestos y sus costos de instalación. Los repuestos se consideran parte del bien y pasaran a ser de propiedad de la PROPIETARIA, sin que EL CONTRATANTE, pueda reclamar ningún derecho por compensación o indemnización derivado de este concepto.",
+          "EL ARRENDATARIO pagará un canon de [VALOR_CUOTA] ([FRECUENCIA_PAGO]), más los impuestos que legalmente correspondan. Valor total estimado del contrato: [TOTAL_CONTRATO]. Cuota inicial: [CUOTA_INICIAL], pagadera al momento de la entrega.\n\n[FORMA_PAGO_SALDO]\n\nLas cuotas deberán pagarse [HORARIO_COBRO], empezando a partir del día siguiente de la suscripción del presente contrato. Medios de pago: [MEDIOS_PAGO]. La fecha, medio de pago, periodicidad y demás componentes económicos también constarán en el Anexo de Condiciones Particulares cuando aplique.",
       },
       {
-        titulo: "SÉPTIMA. OBLIGACIONES DE LA PROPIETARIA",
+        titulo: "OCTAVA. MORA.",
         texto:
-          "La PROPIETARIA declara, que el pleno dominio del objeto del contrato dando en arrendamiento le pertenece, quien cede su uso al CONTRATANTE. Por lo tanto, se obliga para con el CONTRATANTE a:\n\nLa entrega material del objeto del contrato a favor de EL CONTRATANTE.\n\nLA PROPIETATARIA, se obliga a librar a EL CONTRATANTE, de toda turbación ilegitima e imputable directamente a ella y que impida el goce del bien, para lo cual EL CONTRATANTE, deberá darle aviso tan pronto como aquella se presente.\n\nPARAGRAFO: Si la perturbación proviene del no pago de obligaciones fiscales inherentes al bien, estas no podrán ser resuelta por LA PROPIETARIA, por lo tanto, EL CONTRATANTE, renuncia a cualquier requerimiento derivado de la perturbación en la tenencia que emane de autoridades judiciales o administrativas.",
+          "El retardo o incumplimiento en el pago oportuno de los cánones de arrendamiento, o de cualquier otra suma de dinero a cargo de EL ARRENDATARIO en virtud del presente contrato, causará de pleno derecho y sin necesidad de requerimiento judicial o extrajudicial previo para constituir en mora, a los cuales EL ARRENDATARIO renuncia expresamente. El retardo o incumplimiento del ARRENDATARIO, también causará intereses moratorios a la tasa máxima legal permitida por la ley y certificada por la Superintendencia Financiera de Colombia para la correspondiente modalidad, los cuales se liquidarán diariamente desde el día siguiente al del vencimiento de la obligación hasta la fecha en que se verifique el pago efectivo. Asimismo, EL ARRENDATARIO asumirá la totalidad de los costos, honorarios y gastos de cobranza presencial, prejudicial o judicial en que deba incurrir CIM para el cobro de acreencias o para la recuperación física del vehículo, previo informe de los valores correspondientes conforme a la normativa de protección al consumidor aplicable.",
+      },
+      {
+        titulo: "NOVENA. DESTINACIÓN Y USO.",
+        texto:
+          "La motocicleta será utilizada exclusivamente para fines lícitos y por los conductores autorizados. Cuando se autorice expresamente el uso para actividades de reparto, mensajería, plataformas tecnológicas u otras actividades productivas, dicho uso deberá quedar señalado en las Condiciones Particulares y estará sujeto a las condiciones de aseguramiento, mantenimiento y seguridad aplicables.",
+      },
+      {
+        titulo: "DÉCIMA. CONDUCTORES AUTORIZADOS.",
+        texto:
+          "Solo podrán conducir la motocicleta las personas que cumplan los requisitos legales y contractuales y que hayan sido previamente informadas o autorizadas por CIM. El ARRENDATARIO responderá por la información suministrada sobre los conductores y por el uso realizado por ellos en los términos legalmente procedentes.",
       },
     ],
   },
   {
-    title: "Cláusulas 8 a 9",
+    title: "Cláusulas 11 a 15",
     clausulas: [
       {
-        titulo: "OCTAVA. OBLIGACIONES DEL CONTRATANTE O ARRENDATARIO",
+        titulo: "DÉCIMA PRIMERA. LICENCIA Y DOCUMENTOS.",
         texto:
-          "Son obligaciones de EL CONTRATANTE, además de las señaladas en las demás secciones y cláusulas del presente contrato, las que se establecen a continuación:\n\nPagar a las autoridades correspondientes el valor de todos los impuestos, tasas y contribuciones que afecte el bien materia de este contrato, tanto si gravan la propiedad como si se refieren a su tenencia o disfrute. Si el LA PROPIETARIA por cualquier razón, se viere obligada a pagar los citados impuestos, tasas y/o contribuciones por cuenta de EL CONTRATANTE, este deberá reintegrarle la totalidad de lo pagado por dicho concepto, para lo cual EL CONTRATANTE se obligan a reembolsarle inmediatamente las sumas pagadas, dentro de los tres (3) días siguientes al envió del aviso que en ese sentido le dé LA PROPIETARIA, acompañado de copia de los correspondientes recibos de pago. En caso de no recibir el pago de las sumas pagadas dentro del término anteriormente establecido, EL CONTRATANTE autoriza de forma expresa e irrevocable que dichas sumas sean cargadas a la presente operación de renting. Por cada día de retardo se causará a cargo de EL CONTRATANTE y a favor del LA PROPIETARIA, intereses a la tasa moratoria máxima fijada por las autoridades competentes a la fecha en que efectivamente se realice el pago, la cual se liquidará sobre el valor de las sumas pendientes de pago.\n\nSi con ocasión de la explotación del bien se llegaren a imponer multas a LA PROPIETARIA en su condición de propietaria de los mismos, EL CONTRATANTE se obligan a asumir directamente el pago de las mismas. En caso de que, por razones de cualquier orden, el LA PROPIETARIA se viere forzada a pagar dichas multas, EL CONTRATANTE se obligan a reembolsarle inmediatamente las sumas pagadas, dentro de los tres (3) días siguientes al envío del aviso que en ese sentido le dé LA PROPIETARIA, acompañado de copia de los correspondientes recibos de pago. En caso de no recibir el pago de las sumas pagadas dentro del término anteriormente establecido, EL CONTRATANTE autorizan de forma expresa e irrevocable que dichas sumas sean cargadas a la presente operación de renting. En caso de retardo se harán exigibles a cargo de EL CONTRATANTE y a favor del LA PROPIETARIA intereses a la tasa moratoria máxima fijada por las autoridades competentes a la fecha en que efectivamente se realice el pago, la cual se liquidará sobre el valor de las sumas pendientes de pago.\n\nEn caso de que EL CONTRATANTE, ejerzan la opción de compra del bien objeto del contrato, se obligan a hacer entrega al LA PROPIETARIA, de todos y cada uno de los documentos que se requieran para realizar el traspaso del bien, tales como copia de los formularios de pago de impuestos sobre vehículos automotores correspondientes a los periodos gravables desde la fecha en que se efectúo la matrícula del vehículo hasta el año en que se va a ejercer la opción de compra, certificado de tradición del vehículo con una vigencia no mayor a 30 días, fotocopia del SOAT vigente, fotocopia de la tarjeta de propiedad del vehículo, formulario único de tránsito debidamente firmado con improntas, y los demás documentos que se requieran para realizar el mencionado trámite. En caso que EL CONTRATANTE, no efectúen la entrega de los documentos anteriormente enunciados de forma completa en el término establecido, se entenderá que existe un incumplimiento del presente contrato y por ende se podrá dar por terminado de forma unilateral el mismo por parte del LA PROPIETARIA.",
+          "El conductor deberá portar y mantener vigentes los documentos exigidos por la normativa de tránsito. EL ARRENDATARIO deberá informar inmediatamente cualquier suspensión, pérdida o limitación que afecte la habilitación para conducir.",
       },
       {
-        titulo: "NOVENA. - DETERIORO O PÉRDIDA DEL BIEN. EL CONTRATANTE",
+        titulo: "DÉCIMA SEGUNDA. KILOMETRAJE.",
         texto:
-          "es responsable de cualquier deterioro del bien o de su pérdida, cualquiera que sea la causa que los produjere aun cuando dicha causa provenga de fuerza mayor o caso fortuito. En cualquier evento de deterioro o pérdida EL CONTRATANTE deberán avisar inmediatamente al LA PROPIETARIA y cumplir una de las siguientes tres obligaciones, a decisión del LA PROPIETARIA.\n\nReparar por su cuenta el bien y ponerlo en buenas condiciones de funcionamiento a criterio del LA PROPIETARIA, dentro del término que esta indique. Toda reparación deberá hacerse con autorización previa y escrita del LA PROPIETARIA. Es entendido que la reparación sólo podrá hacerse por los fabricantes del bien o por sus representantes en el país, salvo que el LA PROPIETARIA autorice previamente y por escrito su reparación en otras condiciones. Las piezas de repuestos deberán ser técnicamente adecuadas y no podrán cambiar la función original del bien arrendado\n\nReemplazar el bien deteriorado y/o perdido por otro de similares condiciones de presentación, mantenimiento y funcionamiento, a satisfacción del LA PROPIETARIA, caso en el cual se podrá celebrar un nuevo contrato de renting.\n\nPagar al LA PROPIETARIA el valor de los cánones que aún falten para terminar el contrato a partir del momento en que ocurra el daño o la pérdida del bien, más el valor correspondiente a la opción de compra.",
+          "El kilometraje incluido y el tratamiento del kilometraje excedente, si aplica, serán los indicados en las Condiciones Particulares y/o Acta de Entrega. El odómetro no podrá ser alterado, desconectado o manipulado.",
+      },
+      {
+        titulo: "DÉCIMA TERCERA. MANTENIMIENTO.",
+        texto:
+          "El mantenimiento preventivo y, cuando corresponda, los correctivos estarán a cargo de la parte indicada en las Condiciones Particulares. EL ARRENDATARIO deberá cumplir las frecuencias y protocolos técnicos, conservar soportes y abstenerse de realizar modificaciones no autorizadas.\n\n" +
+          buildClausulaMantenimientoText() +
+          "\n\nLa omisión o retardo en la ejecución de los mantenimientos preventivos por parte del Arrendatario, faculta a CIM para: (i) inmovilizar o requerir la entrega del vehículo, (ii) trasladar directamente al arrendatario los costos de reparaciones por desgastes prematuros derivados de dicha negligencia, y (iii) rescindir la garantía o cobertura comercial contratada.",
+      },
+      {
+        titulo: "DÉCIMA CUARTA. COMBUSTIBLE Y ELEMENTOS DE DESGASTE.",
+        texto:
+          "Combustible, lubricantes y consumibles ordinarios de operación estarán a cargo de EL ARRENDATARIO, salvo pacto distinto. Neumáticos, batería, frenos y demás elementos se atenderán conforme al plan de mantenimiento y a la cobertura contratada.",
+      },
+      {
+        titulo: "DÉCIMA QUINTA. SOAT.",
+        texto:
+          "CIM mantendrá vigente y al día el Seguro Obligatorio de Accidentes de Tránsito (SOAT) correspondiente a la motocicleta durante toda la vigencia del contrato. Por su parte, EL ARRENDATARIO se obliga a:\n\ni) Portar y conservar en todo momento el documento físico o digital del SOAT vigente durante la operación del vehículo;\n\nii) Notificar a CIM con al menos cuarenta y cinco (45) días de anticipación al vencimiento del SOAT, para coordinar oportunamente su renovación y expedición; y\n\niii) En caso de accidente de tránsito, dar aplicación prioritaria e inmediata a la cobertura del SOAT conforme a las normas legales aplicables, informando de inmediato a las autoridades de tránsito y a CIM.",
       },
     ],
   },
   {
-    title: "Cláusulas 10 a 13",
+    title: "Cláusulas 16 a 20",
     clausulas: [
       {
-        titulo: "DÉCIMA - PROHIBICIONES DEL CONTRATANTE",
+        titulo: "DÉCIMA SEXTA. ACCIDENTES E INDEMNIDAD.",
         texto:
-          "EL CONTRATANTE no podrá ceder ni subarrendar el objeto del presente contrato ni subrogar a persona física o jurídica los derechos emanados de este contrato. De igual manera, le está prohibido a EL CONTRATANTE usar el bien por fuera de los límites del Área Metropolitana de [CIUDAD_EMPRESA], so pena de incurrir en incumplimiento del presente contrato.\n\nPARAGRAFO: Pese a lo anterior, EL CONTRATANTE, podrá ceder la opción de compra derivada del presente contrato, siempre que notifique a la PROPIETARIA dentro de los 30 días siguientes a la expiración del presente contrato.\n\nPARAGRAFO 2: EL CONTRATANTE, no podrá manipular el GPS de la motocicleta ya que constituye una falta grave y procede a la perdida de los derechos.",
+          "Ante un accidente, EL ARRENDATARIO deberá priorizar la seguridad de las personas, solicitar la asistencia de las autoridades cuando corresponda, informar a CIM inmediatamente y seguir el Protocolo de Accidentes. No podrá reconocer responsabilidad, conciliar daños o efectuar arreglos materiales en nombre de CIM sin autorización, salvo actuaciones urgentes legalmente necesarias. Como quiera que, EL ARRENDATARIO ostenta la guarda material, tenencia, dirección, uso y control exclusivo del vehículo, este mantendrá indemne a CIM frente a cualquier reclamación, sanción, demanda o proceso de responsabilidad civil contractual o extracontractual, penal o administrativa incoado por terceros o autoridades con ocasión del uso u operación de la motocicleta. Si CIM llegare a ser vinculada procesalmente o condenada por dichos conceptos, EL ARRENDATARIO deberá asumir directamente la defensa técnica, sufragar los costos y gastos procesales (incluyendo honorarios de abogados) y reembolsar a CIM el 100% de los montos que esta se viere obligada a pagar, dentro de los cinco (5) días hábiles siguientes al requerimiento escrito.",
       },
       {
-        titulo: "DÉCIMA PRIMERA: RESPONSABILIDAD POR EL USO DEL BIEN",
+        titulo: "DÉCIMA SÉPTIMA. HURTO, PÉRDIDA O SINIESTRO TOTAL.",
         texto:
-          "EL CONTRATANTE, en virtud a haber recibido de la propietaria la tenencia, uso, goce, explotación, administración y vigilancia del bien, reconoce y declara que la PROPIETARIA, desprovista materialmente del bien, de su guarda y su custodia, no tiene ninguna responsabilidad civil, contractual, extracontractual, penal, ni de ninguna otra índole o carácter, por daños o perjuicios que con el uso del bien se le cause al mismo CONTRATANTE o a TERCEROS, ya sea en su integridad personal o en sus bienes, ya que el CONTRATANTE asume para sí todos los riegos previsibles o no, que se generan por tener la explotación  o uso de los bienes, sin que esto se pueda predicar la PROPIETARIA. Igualmente, EL CONTRATANTE, es responsable hasta la culpa leve ante la PROPIETARIA, por el cuidado, conservación, buen uso y mantenimiento del bien\n\nEn las situaciones en que LA PROPIETARIA, sea demandada a fin de reducir su responsabilidad civil, contractual, extracontractual, penal, o de cualquier otra índole o carácter, EL CONTRANTE, se obliga a poner todos los medios de defensa al alcance de la PROPIETARIA y se compromete a reembolsar en forma inmediata a esta los gastos que la actuación judicial cause, tales como honorarios, costas, agencias en derecho, y en el caso que la sentencia sea adversa a los intereses de la PROPIETARIA a reembolsar el monto de la indemnización a que sea condenada a la PROPIETARIA.\n\nEn todo caso la PROPIETARIA, podrá y así lo autoriza EL CONTRATANTE, de forma expresa e irrevocable cargar a la operación de renting las sumas que por cualquier concepto y en relación con cualquier tipo de reclamación ya sea judicial o no, la PROPIETARIA deba asumir en defensa de sus intereses. Así mismo, por cada día de retardo en el pago de las sumas adeudadas a la PROPIETARIA, por virtud de lo dispuesto en la presente clausula, se causarán a cargo del CONTRATANTE y a favor de la PROPIETARIA, intereses a la tasa moratoria máxima fijada por las autoridades competentes a la fecha en que efectivamente se realice el pago, la cual se liquidará sobre el valor de las sumas pendientes de pago con el correspondiente cobro de intereses moratorios por cada día de retardo en el pago.",
+          "En caso de hurto, tentativa de hurto, pérdida o siniestro total, EL ARRENDATARIO deberá denunciar e informar inmediatamente y suministrar la documentación requerida para la reclamación. La liquidación contractual se sujetará a la causa del evento y a las obligaciones legalmente exigibles.",
       },
       {
-        titulo: "DÉCIMA SEGUNDA",
+        titulo: "DÉCIMA OCTAVA. INFRACCIONES Y COMPARENDOS.",
         texto:
-          "El simple retardo en las cuotas descritas en la cláusula cuarta del presente contrato o una vez se tenga conocimiento de un uso indebido del objeto del contrato de parte del CONTRATANTE, autoriza irrevocablemente a la PROPIETARIA para obtener la restitución del objeto del contrato, bien sea a través de restitución voluntaria de parte del CONTRATANTE, o a través del medio más expedito, una vez obtenida la restitución del bien, el presente contrato quedará resuelto.",
+          "Las infracciones a las normas de tránsito, multas, comparendos, costos de grúa, patios, peritajes y demás trámites administrativos o judiciales causados durante la vigencia del contrato o con ocasión de la tenencia del bien, serán de cargo exclusivo de EL ARRENDATARIO o del conductor responsable.\n\nPARÁGRAFO PRIMERO: Si para evitar sanciones, embargos, limitaciones al dominio o la inmovilización prolongada del activo, CIM se viere forzada o decidiere cancelar directamente tales valores o adelantar gestiones de desempatado o rescate, EL ARRENDATARIO se obliga a reembolsar a CIM la totalidad de las sumas pagadas, más los gastos administrativos y de gestoría que se generen, dentro de los cinco (5) días hábiles siguientes al envío de la cuenta de cobro correspondiente acompañada de los comprobantes respectivos.\n\nPARÁGRAFO SEGUNDO: En caso de no verificar el reembolso dentro del término establecido, la suma adeudada causará intereses de mora a la tasa máxima legal permitida a favor de CIM, sin perjuicio de la facultad de cargar dicho monto al depósito de garantía de que trata la Cláusula Vigésima Sexta o de dar por terminado unilateralmente el presente contrato con justa causa.",
       },
       {
-        titulo: "DÉCIMA TERCERA – INSPECCIÓN",
+        titulo: "DÉCIMA NOVENA. CUSTODIA.",
         texto:
-          "LA PROPIETARIA podrá inspeccionar el estado en que se encuentra el bien, y podrá ordenar su inmovilización si considera que el trabajo que está realizando puede ocasionar averías, asimismo será extensible esta prerrogativa en caso de retardo en el pago de las cuotas descritas en la cláusula segunda del presente contrato.",
+          "EL ARRENDATARIO deberá custodiar diligentemente la motocicleta, utilizar sistemas de seguridad razonables y evitar dejarla en lugares o condiciones que incrementen injustificadamente el riesgo de hurto o daño.",
+      },
+      {
+        titulo: "VIGÉSIMA. GPS Y DATOS.",
+        texto:
+          "Si la motocicleta cuenta con dispositivo de geolocalización, su tratamiento se regirá por la autorización y política de tratamiento de datos correspondiente. La finalidad deberá estar informada y limitarse a fines legítimos como seguridad, gestión contractual, recuperación del activo, asistencia y administración del servicio, conforme a la normativa aplicable.\n\nSerá causal de terminación inmediata del contrato con justa causa la desconexión, alteración, manipulación no autorizada, retiro o interferencia del dispositivo de geolocalización (GPS) o de sus componentes por parte de EL ARRENDATARIO o terceros. En tal evento, CIM quedará facultada para requerir la restitución inmediata del bien y ejecutar las garantías correspondientes.",
       },
     ],
   },
   {
-    title: "Cláusulas 14 a 17",
+    title: "Cláusulas 21 a 26",
     clausulas: [
       {
-        titulo: "DÉCIMA CUARTA. - OPCIONES",
+        titulo: "VIGÉSIMA PRIMERA. PROHIBICIONES.",
         texto:
-          "Al vencimiento del término de duración del contrato y siempre que EL CONTRATANTE, hayan cumplido todas las obligaciones del presente contrato, este tendrá una de las siguientes opciones:\nAdquirir la propiedad del bien por el valor estipulado en la cláusula cuarta.\n\nCelebrar un nuevo contrato, siempre y cuando se acuerde el termino de duración y los valores de los cánones de arrendamiento.\n\nEL CONTRATANTE que vaya a ejercer alguna de las opciones antes indicadas, deberá informar a LA PROPIETARIA, en forma escrita y con treinta (30) días de anticipación a la fecha de terminación del contrato, por cuál de las opciones consignadas en su favor opta. En caso de que optare por la de adquisición, deberá cancelar su valor el día de la terminación del contrato. Una vez ejercida y pagada la opción de compra EL CONTRATANTE, autorizan de forma expresa e irrevocable que la PROPIETARIA, proceda a realizar, previo pago por parte de LOS CONTRATANTES de los costos y gastos que dicho trámite genere, el traspaso del bien objeto del contrato, para lo cual EL CONTRATANTE, autoriza desde ahora de forma voluntaria e irrevocable que todos los trámites relativos al traspaso del bien lo realice directamente la persona designada por la PROPIETARIA, razón por la cual, LOS CONTRATANTES, se obligan desde ahora a asumir todos y cada uno de los costos y/o gastos que estos trámites generen, inclusive el valor de los honorarios del tramitador contratado para el efecto. En caso de omisión en el cumplimiento de esta obligación, EL CONTRATANTE, exoneran expresamente al LA PROPIETARIA de todo hecho que dé lugar a responsabilidad civil, tributaria, administrativa y/o de cualquier tipo, y en su lugar se compromete a indemnizar cualquier perjuicio que se cause al LA PROPIETARIA.",
+          "Se prohíbe subarrendar, ceder el uso a terceros no autorizados, alterar identificadores, modificar estructuralmente el vehículo, participar en carreras o actividades ilícitas, transportar sustancias u objetos ilícitos, utilizarlo para fines distintos de los autorizados o trasladarlo fuera de las zonas autorizadas cuando exista una restricción expresa y válida.",
       },
       {
-        titulo: "DÉCIMA QUINTA – TERMINACIÓN",
+        titulo: "VIGÉSIMA SEGUNDA. INSPECCIÓN.",
         texto:
-          "Este contrato terminará:\n\nPor mutuo consentimiento de las partes. Las partes por mutuo consentimiento podrán acordar la terminación anticipada del presente contrato, bajo las siguientes condiciones:\n\na) EL CONTRATANTE deben asumir los gastos, costos, impuestos, derechos, valorizaciones, tasas, contribuciones, derechos notariales y cualquier otro que con la terminación anticipada se causen directa o indirectamente; b) En el evento de que la terminación del contrato implique la restitución del(los) bien(es), este se deberá efectuar en un plazo no menor de cinco (5) días contados a partir del acuerdo de terminación del contrato y el(los) bien(es) deberá(n) entregarse a paz y salvo por impuestos, y después de haber pagado los valores de las cuotas que se hayan causado y no pagado, junto con las penas o intereses que por el retardo en el pago de los valores de los cánones de arrendamiento se hayan causado. Para efectos de este caso, se entiende que la terminación anticipada trae como consecuencia que no haya lugar a las opciones establecidas en la Cláusula Décima Cuarta; c) El acuerdo de terminación anticipada del contrato deberá constar por escrito para que tenga validez; Por vencimiento del término de vigencia del contrato; y, Por el incumplimiento de las obligaciones contenidas en el presente contrato y contraídas por las partes, y en especial por la ocurrencia de una cualquiera de las siguientes situaciones, las cuales se tendrán como JUSTAS CAUSAS para la terminación del contrato:\n\ni. El no pago oportuno de uno de las cuotas descritas en la cláusula cuarta del presente contrato.\n\nii. El uso indebido del(los) bien(es) arrendado(s), entre otros, el uso contrario a su normal destinación; su empleo para la realización de actividades ilícitas; el subarriendo o disposición del bien de cualquier forma sin autorización expresa del propietario; su empleo para el transporte de sustancias tóxicas, psicotrópicas, armamento; etc.\n\niii. Si EL CONTRATANTE gravaren con cualquier clase de cargas o garantías el(los) bien(es) objeto del presente contrato y/o cuando este (estos) sea(n) afectado(s) por medidas cautelares o por cualquier acción judicial que provengan de hechos ajenos a LA PROPIETARIA;\n\niv. Por sub-arrendar el(los) bien(es) objeto del presente contrato, o entregarlo(s) a terceros para su explotación bajo cualquier modalidad contractual, o por ceder este contrato, sin autorización previa y escrita del LA PROPIETARIA;\n\nv. Por incurrir uno de EL CONTRATANTE en concordato, liquidación voluntaria u obligatoria, en causal de disolución y/o haber sido demandado en vía ejecutiva;\n\nvi. Por la existencia de cualquier acción judicial que involucre el(los) bien(es) objeto de este contrato;\n\nvii. Por el retiro o manipulación del GPS;\n\nviii. Por la falta de pago de mas de tres (3) tarifas. (Tiene 3 días para recuperarla)\n\nix. Por la pérdida o destrucción total del(los) bien(es).\n\nLas partes establecen que si el contratante incumple con el pago de (3) tres tarifas se enviará un cobrador contratado externamente el cual por ir a recoger o cobrar tendrá una multa de $25.000= en el área metropolitana por falta de pago si la moto es recogida tendrá una espera de hasta (3) tres días hábiles para realizar el pago y recuperar la moto.\n\nPARÁGRAFO PRIMERO: Las partes acuerdan que en cualquiera de las situaciones o causales establecidas en el numeral 3. de la presente cláusula, el LA PROPIETARIA podrá unilateralmente dar por terminado el presente contrato antes del vencimiento del término, sin necesidad de declaración judicial, y exigir la restitución del(los) bien(es), así como las demás prestaciones a que haya lugar.\n\nEn ese sentido, EL CONTRATANTE desde ya acepta que, recibida esta manifestación de terminación unilateral de parte del LA PROPIETARIA, restituirá voluntariamente el (los) bien(es) objeto del contrato y efectuará la entrega material en un término no mayor a cinco (5) días siguientes a la manifestación unilateral de terminación con justa causa. Esto sin perjuicio del pago de las cuotas adeudadas y no pagados al momento de dicha restitución y las sumas adeudadas por concepto de impuestos, sanciones, costos y demás gastos que en el presente Contrato se pacten como de cargo de EL CONTRATANTE.\n\nPARÁGRAFO SEGUNDO: CLAUSULA PENAL: Así mismo, en los eventos de terminación del contrato por cualquiera de las causales antes señaladas en el numeral 3 de esta Cláusula, EL CONTRATANTE pagarán a título de pena la suma entregada en la cláusula segunda del presente contrato sin perjuicio de su obligación de devolver el(los) bien(es) y de pagar los cánones de arrendamiento que se hayan causado y no se hayan pagado.",
+          "CIM podrá solicitar revisiones razonables del estado del vehículo, previa coordinación, y podrá requerir fotografías, documentos o información necesaria para verificar el cumplimiento contractual, respetando los derechos del ARRENDATARIO y la normativa de protección de datos.",
       },
       {
-        titulo: "DÉCIMA SEXTA",
+        titulo: "VIGÉSIMA TERCERA. INCUMPLIMIENTO Y TERMINACIÓN.",
         texto:
-          `Autorizo de manera expresa e inequívoca a la PROPIETARIA, para que dé tratamiento sobre la recolección, almacenamiento, uso, circulación y la supresión de los datos personales indispensables, opcionales y sensibles que se hayan recolectado en fechas anteriores o que se requieran en un futuro para el desarrollo adecuado de la relación entre las partes del presente contrato, autorizo la Cesión Nacional o Transferencia Internacional de datos a: i) entidades públicas o administrativas en ejercicio de sus funciones legales o por orden judicial; ii) terceros con los cuales la propietaria haya celebrado contratos, para la realización de tareas tercerizadas relacionadas con la venta de vehículos automotores.\n\nCon mi firma certifico conocer la política de Protección de Datos Personales del responsable del Tratamiento y los derechos que me asisten en mi calidad de Titular de Datos Personales, entre los que se encuentran los siguientes: i) Conocer, actualizar y rectificar sus Datos Personales ii) Solicitar prueba de la autorización otorgada, salvo cuando la ley no lo requiera; iii) Previa solicitud, ser informado sobre el uso que se ha dado a sus Datos Personales, por el responsable o quienes por cuenta de éste realicen el Tratamiento de sus Datos Personales; iv) Presentar ante las autoridades competente quejas por violaciones al régimen legal colombiano de protección de datos personales; v) Revocar la presente autorización y/o solicitar la supresión de sus Datos Personales cuando la autoridad competente determine que el responsable incurrió en conductas contrarias a la ley y a la Constitución, y, vi) Acceder en forma gratuita a sus Datos Personales que hayan sido objeto de Tratamiento. Estos los puedo ejercer a través de los canales dispuestos y disponibles en ${EMPRESA_PROPIETARIA.email || "CONFIGURAR"}`,
+          "Serán causas de terminación las previstas en la ley y las expresamente pactadas, incluyendo incumplimiento grave o reiterado, mora, uso no autorizado, ocultamiento o alteración del vehículo, imposibilidad jurídica de ejecución o pérdida de confianza derivada de hechos objetivamente verificables. Cuando corresponda, CIM requerirá el cumplimiento y aplicará el procedimiento legal antes de exigir la restitución.",
       },
       {
-        titulo: "DÉCIMA SÉPTIMA: SOLUCION DE CONFLICTOS- CLAUSULA COMPROMISORIA",
+        titulo: "VIGÉSIMA CUARTA. RESTITUCIÓN.",
         texto:
-          `Toda controversia o diferencia relativa a este contrato, su celebración, ejecución, desarrollo, a su terminación, a su liquidación, o al cumplimiento de cualquiera de las obligaciones señaladas en el mismo, se resolverá por un Tribunal de Arbitramento, el cual será administrado por la Cámara de Comercio de ${EMPRESA_PROPIETARIA.ciudad} o directamente una conciliación con la empresa ${EMPRESA_PROPIETARIA.razonSocialCorto}.\n\nEl Tribunal de arbitramento se regirá de acuerdo a las siguientes reglas:\n\nPRIMERA: El Tribunal estará integrado por 1 árbitro, de conformidad a la cuantía del proceso, elegidos de común acuerdo por las partes, de la lista oficial que para tal efecto lleva el Centro de Conciliación y Arbitraje de la Cámara de Comercio de ${EMPRESA_PROPIETARIA.ciudad}. En caso de no existir acuerdo, las partes delegan expresamente en el Centro de Conciliación y Arbitraje de la Cámara de Comercio de ${EMPRESA_PROPIETARIA.ciudad}, la designación de los Árbitros de conformidad con lo normado en su reglamento interno.\n\nSEGUNDA: La legislación procesal aplicable será la estipulada en la ley 1563 de 2012, y sus normas concordantes, así como las que las sustituyan.\n\nTERCERA: El Tribunal decidirá en Derecho.\n\nCUARTA: El secretario del Tribunal de Arbitramento será elegido de la lista de oficial de secretarios que para tal efecto lleve el Centro de Conciliación y Arbitraje de la Cámara de Comercio de ${EMPRESA_PROPIETARIA.ciudad}.\n\nQUINTA: El Tribunal sesionará en las instalaciones del Centro de Conciliación y Arbitraje de la Cámara de Comercio de ${EMPRESA_PROPIETARIA.ciudad}.`,
+          "Al terminar el contrato, EL ARRENDATARIO deberá restituir la motocicleta, llaves, accesorios y documentos en el lugar indicado por CIM. Se elaborará Acta de Devolución con kilometraje, estado general, daños y elementos entregados.",
+      },
+      {
+        titulo: "VIGÉSIMA QUINTA. DESGASTE NORMAL.",
+        texto:
+          "No se cobrarán deterioros propios del uso normal y diligente. Los daños atribuibles a uso indebido, negligencia, accidente no cubierto, modificaciones no autorizadas o incumplimiento serán evaluados con soporte técnico y de conformidad con la ley.",
+      },
+      {
+        titulo: "VIGÉSIMA SEXTA. GARANTÍAS.",
+        texto:
+          "Las garantías pactadas constarán en documento separado y podrán comprender pagaré y carta de instrucciones, depósito o garantía permitida por la ley, y/o codeudor o garante, según el perfil de riesgo. Ninguna garantía podrá extenderse más allá de las obligaciones válidamente garantizadas.",
       },
     ],
   },
   {
-    title: "Cláusulas 18 a 23",
+    title: "Cláusulas 27 a 31",
     clausulas: [
       {
-        titulo: "DÉCIMA OCTAVA",
+        titulo: "VIGÉSIMA SÉPTIMA. DATOS PERSONALES Y CENTRALES DE INFORMACIÓN.",
         texto:
-          "El valor del traspaso de la moto será asumido por el comprador, incluyendo impuestos, gestoría y multas si las ha cometido el comprador.",
+          "EL ARRENDATARIO autorizará, en documentos separados cuando corresponda, el tratamiento de sus datos personales y la consulta/reporte ante operadores de información, conforme a la legislación aplicable y a las finalidades informadas.",
       },
       {
-        titulo: "DECIMA NOVENA",
+        titulo: "VIGÉSIMA OCTAVA. CESIÓN.",
         texto:
-          `Para efectos de notificaciones LA PROPIETARIA las recibirán en la dirección electrónica ${EMPRESA_PROPIETARIA.email || "CONFIGURAR"} o en [DIRECCION_EMPRESA], y EL CONTRATANTE, en la dirección: [DIRECCION_NOTIFICACIONES], teléfono: [CELULAR_CONTRATANTE]`,
+          "CIM podrá ceder sus derechos económicos o posición contractual cuando legalmente proceda y se respeten los derechos del ARRENDATARIO. EL ARRENDATARIO no podrá ceder el contrato ni entregar el uso del vehículo sin autorización previa y escrita.",
       },
       {
-        titulo: "VIGÉSIMA",
+        titulo: "VIGÉSIMA NOVENA. NOTIFICACIONES.",
         texto:
-          "la motocicleta cuenta con un sistema de GPS; que no puede ser manipulado ni modificado si no es un agente autorizado de la empresa lo cual si se es manipulado o desconectado este contrato se dará por terminado y perderá la totalidad del dinero cancelado.",
+          `Las comunicaciones se efectuarán a los datos registrados en las Condiciones Particulares, incluyendo correo electrónico, dirección física, teléfono y/o canales digitales autorizados, respetando las reglas legales de notificación y protección de datos. CIM recibirá notificaciones en ${EMPRESA_PROPIETARIA.email || EMPRESA_PROPIETARIA.direccion} o en [DIRECCION_EMPRESA]; EL ARRENDATARIO, en la dirección: [DIRECCION_NOTIFICACIONES], teléfono: [CELULAR_CONTRATANTE].`,
       },
       {
-        titulo: "VIGÉSIMA PRIMERA",
-        texto: buildClausulaMantenimientoText(),
+        titulo: "TRIGÉSIMA. INTEGRIDAD CONTRACTUAL.",
+        texto:
+          "Forman parte integral del contrato las Condiciones Particulares, Acta de Entrega, Reglamento de Uso, protocolos y demás anexos efectivamente suscritos. En caso de contradicción, prevalecerá la norma imperativa y luego el contrato y sus anexos en el orden definido en las Condiciones Particulares.",
       },
       {
-        titulo: "VIGÉSIMA SEGUNDA",
+        titulo: "TRIGÉSIMA PRIMERA. DOMICILIO Y LEY APLICABLE.",
         texto:
-          "al terminar la totalidad de la deuda cumpliendo las cuotas establecidas en el presente contrato tendrá derecho a ser efectuado el traspaso que tiene un costo adicional que será asumido por el comprador; para ser efectivo este traspaso debe de estar al día con los documentos de la motocicleta como el SOAT, Revisión técnico-mecánica y sin comparendos.",
-      },
-      {
-        titulo: "VIGESIMA TERCERA: DOMICILIO CONTRACTUAL",
-        texto:
-          `Para todos los efectos legales del presente Contrato, se tendrá como domicilio contractual la ciudad de ${EMPRESA_PROPIETARIA.ciudad}.`,
+          `El contrato se regirá por la legislación colombiana. Para efectos contractuales se tendrá como domicilio la ciudad de ${EMPRESA_PROPIETARIA.ciudad}, sin perjuicio de las reglas imperativas de competencia y protección al consumidor que resulten aplicables.`,
       },
     ],
   },
 ];
 
 export function buildClausulaMantenimientoText(): string {
-  return "Se informa al contratante que el primer cambio de aceite se realizará entre los 500 a 1000 kilómetros segundo, tercero, cuarto, quinto, sexto, octavo, noveno, decimo, onceavo y doceavo cambio de aceite se contará 1000 kilómetros más desde el ultimo cambio de aceite todos los aceites se deberá pagar hay mantenimientos preventivos adicionales, como mantenimiento preventivo, mantenimiento medio y mantenimiento general obligatorios para obtener la garantía que serán en la tercera, sexta y novena revisión el cual ese mantenimiento deberá ser pago, según las tarifas establecidas.";
+  return "Se informa al arrendatario que el primer cambio de aceite se realizará entre los 500 a 1000 kilómetros; segundo, tercero, cuarto, quinto, sexto, octavo, noveno, décimo, onceavo y doceavo cambio de aceite se contará 1000 kilómetros más desde el último cambio de aceite; todos los aceites se deberán pagar. Hay mantenimientos preventivos adicionales (preventivo, medio y general) obligatorios para obtener la garantía, que serán en la tercera, sexta y novena revisión, los cuales deberán ser pagados según las tarifas establecidas.";
 }
 
-export const firmaTemplate = `Para constancia se firma en ${EMPRESA_PROPIETARIA.ciudad} a los [DIA] (xx) día del mes de [MES] de dos mil [ANIO] ([ANIO_NUM]), por quienes en el intervinieron.
-
-LA PROPIETARIA
-${EMPRESA_PROPIETARIA.representante}
-${EMPRESA_PROPIETARIA.cedula || "CONFIGURAR"}
-Representante legal
-${EMPRESA_PROPIETARIA.razonSocial}
-Nit: ${EMPRESA_PROPIETARIA.nit || "CONFIGURAR"}
-
-EL CONTRATANTE
-[NOMBRE_CONTRATANTE]
-[TIPO_DOC_CONTRATANTE] [CEDULA_CONTRATANTE]
-Celular: [CELULAR_CONTRATANTE]`;
+export const firmaTemplate = `Para constancia se firma en ${EMPRESA_PROPIETARIA.ciudad} a los [DIA] días del mes de [MES] de [ANIO], por quienes intervinieron.`;
 
 function applyContratantePlaceholders(text: string, form: ContratoData): string {
   return text
@@ -612,8 +641,8 @@ function applyComercialPlaceholders(text: string, form: ContratoData): string {
 
 export function tipoContratoLabel(esRenovacion: boolean): string {
   return esRenovacion
-    ? "CONTRATO DE RENTING DE RENOVACIÓN"
-    : "CONTRATO DE RENTING";
+    ? "CONTRATO DE RENTING OPERATIVO DE MOTOCICLETA (RENOVACIÓN)"
+    : "CONTRATO DE RENTING OPERATIVO DE MOTOCICLETA";
 }
 
 export function renderIntro(form: ContratoData): string {
@@ -623,6 +652,11 @@ export function renderIntro(form: ContratoData): string {
       .replaceAll("[MES]", form.fechaFirmaMes)
       .replaceAll("[ANIO]", form.fechaFirmaAnio)
       .replaceAll("[NOMBRE_CONTRATANTE]", form.nombreContratante)
+      .replaceAll(
+        "[TIPO_DOC_CONTRATANTE]",
+        form.tipoDocumentoContratante || "C.C.",
+      )
+      .replaceAll("[CEDULA_CONTRATANTE]", form.cedulaContratante)
       .replaceAll("[TIPO_CONTRATO]", tipoContratoLabel(form.esRenovacion)),
     form,
   );
@@ -693,7 +727,7 @@ export function contratoClausulasSelfCheck(): void {
     throw new Error("buildClausulaMantenimientoText");
   }
   const medios = buildMediosPagoText();
-  if (!medios.includes("DAVIVIENDA CONVENIO")) {
+  if (!medios.includes("efectivo") || !medios.includes("Bancolombia")) {
     throw new Error("buildMediosPagoText");
   }
   if (!medios.includes(EMPRESA_PROPIETARIA.razonSocialCorto)) {
@@ -732,11 +766,11 @@ export function contratoClausulasSelfCheck(): void {
   });
   if (
     !intro.includes(EMPRESA_PROPIETARIA.representante) ||
-    !intro.includes("LA PROPIETARIA")
+    !intro.includes("EL ARRENDADOR")
   ) {
     throw new Error("renderIntro representante");
   }
-  if (!intro.includes("CONTRATO DE RENTING")) {
+  if (!intro.includes("CONTRATO DE RENTING OPERATIVO")) {
     throw new Error("renderIntro tipo");
   }
 
@@ -781,7 +815,7 @@ export function contratoClausulasSelfCheck(): void {
   }
   if (
     !tipoContratoLabel(true).includes("RENOVACIÓN") ||
-    tipoContratoLabel(false) !== "CONTRATO DE RENTING"
+    tipoContratoLabel(false) !== "CONTRATO DE RENTING OPERATIVO DE MOTOCICLETA"
   ) {
     throw new Error("tipoContratoLabel");
   }
@@ -847,24 +881,21 @@ export function contratoClausulasSelfCheck(): void {
     throw new Error("buildContratoComercial duracion lun_sab");
   }
   const firmaPpt = renderFirma({ ...rebuilt, tipoDocumentoContratante: "PPT" });
-  if (!firmaPpt.includes("PPT 123")) {
-    throw new Error("renderFirma PPT");
+  if (!firmaPpt.includes("Cartagena") || !firmaPpt.includes("agosto")) {
+    throw new Error("renderFirma fecha");
   }
-  if (!firmaPpt.includes("Celular: 3001112233")) {
-    throw new Error("renderFirma celular");
-  }
-  const novena = blocks
+  const notif = blocks
     .flatMap((b) => b.clausulas)
-    .find((c) => /D[EÉ]CIMA NOVENA/.test(c.titulo));
-  if (!novena) throw new Error("cláusula décima novena");
-  const novenaTxt = renderClausulaTexto(novena.texto, {
+    .find((c) => /VIG[ÉE]SIMA NOVENA/.test(c.titulo));
+  if (!notif) throw new Error("cláusula vigésima novena");
+  const notifTxt = renderClausulaTexto(notif.texto, {
     ...rebuilt,
     celularContratante: "3001112233",
   });
   if (
-    !novenaTxt.includes("Calle 1, barrio Centro") ||
-    !novenaTxt.includes("teléfono: 3001112233")
+    !notifTxt.includes("Calle 1, barrio Centro") ||
+    !notifTxt.includes("teléfono: 3001112233")
   ) {
-    throw new Error("cláusula 19 dirección + celular");
+    throw new Error("cláusula notificaciones dirección + celular");
   }
 }

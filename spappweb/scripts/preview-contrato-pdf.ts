@@ -33,10 +33,6 @@ async function main() {
     monto_cuota_periodo: 25_000,
   });
 
-  // 1x1 transparent PNG — placeholder for client signature
-  const blankSig =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
-
   const buf = await generateContratoPdf({
     contrato: {
       ...comercial,
@@ -51,7 +47,6 @@ async function main() {
       fechaFirmaAnio: fecha.anio,
       celularContratante: "3001234567",
     },
-    signatureDataUrl: blankSig,
   });
 
   const out = path.join(process.cwd(), "preview-contrato.pdf");

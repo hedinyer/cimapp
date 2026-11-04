@@ -350,7 +350,7 @@ export function ContractSignFlow({
         >
           <LegalBox title="Firma del contrato" body={renderFirma(formData)} />
           <FirmaParty
-            title="LA PROPIETARIA"
+            title="EL ARRENDADOR / CIM"
             sigSrc={
               EMPRESA_PROPIETARIA.firmaFile
                 ? `/${EMPRESA_PROPIETARIA.firmaFile}`
@@ -373,6 +373,7 @@ export function ContractSignFlow({
             />
             <span className="text-base leading-relaxed text-foreground">
               He leído y acepto todas las cláusulas del CONTRATO DE RENTING
+              OPERATIVO DE MOTOCICLETA
             </span>
           </label>
         </StepCard>
@@ -395,8 +396,8 @@ export function ContractSignFlow({
           <SummarySection
             title={
               comercial.esRenovacion
-                ? "Contrato de Renting de Renovación"
-                : "Contrato de Renting"
+                ? "Contrato de Renting Operativo (Renovación)"
+                : "Contrato de Renting Operativo de Motocicleta"
             }
             lines={[
               `Contratante: ${nombre}`,

@@ -310,7 +310,7 @@ export async function generateHojaVidaPdf(args: {
 
 export async function generateContratoPdf(args: {
   contrato: ContratoData;
-  signatureDataUrl: string;
+  signatureDataUrl?: string | null;
 }): Promise<Buffer> {
   const { contrato } = args;
   const [logo, beraLogo, firmaProp] = await Promise.all([
@@ -319,6 +319,11 @@ export async function generateContratoPdf(args: {
     publicImage(EMPRESA_PROPIETARIA.firmaFile),
   ]);
   const e = EMPRESA_PROPIETARIA;
+  const clientSig =
+    typeof args.signatureDataUrl === "string" &&
+    args.signatureDataUrl.startsWith("data:image/")
+      ? args.signatureDataUrl
+      : null;
 
   const doc = (
     <Document>
@@ -327,10 +332,11 @@ export async function generateContratoPdf(args: {
         <Footer />
         <Text style={styles.titleContrato}>
           {contrato.esRenovacion
-            ? "Contrato de Renting de Renovación"
-            : "Contrato de Renting"}
+            ? "Contrato de Renting Operativo de Motocicleta (Renovación)"
+            : "Contrato de Renting Operativo de Motocicleta"}
         </Text>
-        <Text style={styles.titleSub}>{e.razonSocial} · {e.ciudad}</Text>
+        <Text style={styles.titleSub}>{e.razonSocial} · Nit {e.nit}</Text>
+        <Text style={styles.titleSub}>{e.ciudad}</Text>
         {contrato.esRenovacion ? (
           <Text style={styles.titleSub}>
             Este es un contrato de renovación · {contrato.diasContrato} días
@@ -354,7 +360,7 @@ export async function generateContratoPdf(args: {
         <Text style={styles.firmaIntro}>{renderFirma(contrato)}</Text>
         <View style={styles.firmaRow}>
           <FirmaCol
-            role="La propietaria"
+            role="El arrendador / CIM"
             sigSrc={firmaProp}
             lines={[
               e.representante,
@@ -365,8 +371,8 @@ export async function generateContratoPdf(args: {
             ]}
           />
           <FirmaCol
-            role="El contratante"
-            sigSrc={args.signatureDataUrl}
+            role="El arrendatario"
+            sigSrc={clientSig}
             lines={[
               contrato.nombreContratante,
               `${contrato.tipoDocumentoContratante || "C.C."} ${contrato.cedulaContratante}`,
