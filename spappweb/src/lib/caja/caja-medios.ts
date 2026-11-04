@@ -1,19 +1,37 @@
-export const CAJA_MEDIO_EGRESO_VALUES = ["efectivo", "nequi", "davivienda"] as const;
+export const CAJA_MEDIO_EGRESO_VALUES = ["efectivo", "bancolombia"] as const;
 
 export type CajaMedioEgreso = (typeof CAJA_MEDIO_EGRESO_VALUES)[number];
 
 export const CAJA_MEDIO_EGRESO_LABELS: Record<CajaMedioEgreso, string> = {
   efectivo: "Efectivo",
-  nequi: "Nequi",
-  davivienda: "Davivienda / Daviplata",
+  bancolombia: "Bancolombia CIM",
 };
 
 export function classifyMedioPago(
   medio: string | null,
-): "efectivo" | "nequi" | "davivienda" | "otro" {
+): "efectivo" | "bancolombia" | "otro" {
+  if (!medio || medio === "efectivo" || medio === "datafono") return "efectivo";
+  if (
+    medio === "bancolombia_cim" ||
+    medio === "bancolombia" ||
+    medio === "davivienda" ||
+    medio.startsWith("nequi")
+  ) {
+    return "bancolombia";
+  }
+  return "otro";
+}
+
+export function classifyMedioEgreso(
+  medio: string | null,
+): "efectivo" | "bancolombia" | "otro" {
   if (!medio || medio === "efectivo") return "efectivo";
-  if (medio === "datafono") return "efectivo";
-  if (medio === "davivienda") return "davivienda";
-  if (medio.startsWith("nequi")) return "nequi";
+  if (
+    medio === "bancolombia" ||
+    medio === "nequi" ||
+    medio === "davivienda"
+  ) {
+    return "bancolombia";
+  }
   return "otro";
 }

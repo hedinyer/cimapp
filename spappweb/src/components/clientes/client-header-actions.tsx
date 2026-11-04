@@ -33,6 +33,7 @@ import {
   FRECUENCIA_LABELS,
   MEDIO_PAGO_ADMIN_LABELS,
   MEDIO_PAGO_ADMIN_OPTIONS,
+  isPresencialMedioPago,
   type MedioPagoAdmin,
 } from "@/lib/pipeline/types";
 import { motoListo } from "@/lib/pipeline/step-logic";
@@ -72,7 +73,7 @@ import { TouchSelect } from "@/components/ui/touch-select";
 import { ImageFileField } from "@/components/ui/image-file-field";
 
 function isPresencialMedio(medio: MedioPagoAdmin): boolean {
-  return medio === "efectivo" || medio === "datafono";
+  return isPresencialMedioPago(medio);
 }
 
 function clienteCedula(pipeline: ClientPipeline): string {

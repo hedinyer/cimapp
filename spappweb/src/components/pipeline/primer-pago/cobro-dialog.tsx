@@ -24,6 +24,8 @@ import {
   BANCO_ORIGEN_LABELS,
   CONTEXTO_PAGO_LABELS,
   MEDIO_PAGO_ADMIN_LABELS,
+  MEDIO_PAGO_ADMIN_OPTIONS,
+  isPresencialMedioPago,
   type BancoOrigen,
   type MedioPagoAdmin,
   type PagoRow,
@@ -46,15 +48,14 @@ import { Label } from "@/components/ui/label";
 import { TouchSelect } from "@/components/ui/touch-select";
 import { cn } from "@/lib/utils";
 
-const MEDIOS: { value: MedioPagoAdmin; label: string }[] = [
-  { value: "efectivo", label: "Efectivo" },
-  { value: "datafono", label: "Datáfono" },
-  { value: "nequi_nicolas", label: MEDIO_PAGO_ADMIN_LABELS.nequi_nicolas },
-  { value: "davivienda", label: MEDIO_PAGO_ADMIN_LABELS.davivienda },
-];
+const MEDIOS: { value: MedioPagoAdmin; label: string }[] =
+  MEDIO_PAGO_ADMIN_OPTIONS.map((value) => ({
+    value,
+    label: MEDIO_PAGO_ADMIN_LABELS[value],
+  }));
 
 function isPresencialMedio(medio: MedioPagoAdmin): boolean {
-  return medio === "efectivo" || medio === "datafono";
+  return isPresencialMedioPago(medio);
 }
 
 function toDatetimeLocal(iso: string | null): string {
@@ -123,7 +124,7 @@ export function CobroPrimerPagoDialog({
   const [conceptoDestino, setConceptoDestino] =
     useState<PrimerPagoConcepto | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [bancoOrigen, setBancoOrigen] = useState<BancoOrigen>("nequi");
+  const [bancoOrigen, setBancoOrigen] = useState<BancoOrigen>("bancolombia");
   const [referencia, setReferencia] = useState("");
   const [fecha, setFecha] = useState(nowDatetimeLocal);
   const [confidence, setConfidence] = useState<number | null>(null);
@@ -136,7 +137,6 @@ export function CobroPrimerPagoDialog({
   const fechaRef = useRef<HTMLInputElement>(null);
 
   const presencial = isPresencialMedio(medioPagoAdmin);
-  const esEfectivo = medioPagoAdmin === "efectivo";
 
   const maxMonto = conceptoDestino
     ? faltanteConcepto(compra, pagos, conceptoDestino)
@@ -391,6 +391,8 @@ export function CobroPrimerPagoDialog({
                       if (isPresencialMedio(m.value)) {
                         setFile(null);
                         if (!fecha) setFecha(nowDatetimeLocal());
+                      } else {
+                        setBancoOrigen("bancolombia");
                       }
                     }}
                     className={cn(
@@ -494,9 +496,7 @@ export function CobroPrimerPagoDialog({
           {presencial ? (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
               Pago presencial ({MEDIO_PAGO_ADMIN_LABELS[medioPagoAdmin]}). No
-              requiere foto
-              {esEfectivo ? "" : " (voucher datáfono opcional)"}
-              ; al guardar se imprime el recibo.
+              requiere foto; al guardar se imprime el recibo.
             </div>
           ) : (
             <>
@@ -633,18 +633,6 @@ export function CobroPrimerPagoDialog({
             </>
           )}
 
-          {!esEfectivo && presencial && (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="cobro-ref-opcional">Referencia (opcional)</Label>
-              <Input
-                id="cobro-ref-opcional"
-                value={referencia}
-                onChange={(e) => setReferencia(e.target.value)}
-                placeholder="Voucher datáfono (opcional)"
-                disabled={pending}
-              />
-            </div>
-          )}
         </div>
 
         <DialogFooter>

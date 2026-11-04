@@ -379,12 +379,7 @@ export const AGENT_TOOLS = {
       referencia: z.string().optional(),
       monto: z.number().int().positive(),
       fechaComprobante: z.string().optional().describe("ISO 8601"),
-      medioPagoAdmin: z.enum([
-        "nequi_nicolas",
-        "davivienda",
-        "efectivo",
-        "datafono",
-      ]),
+      medioPagoAdmin: z.enum(["efectivo", "bancolombia_cim"]),
       bancoOrigen: z.enum([
         "nequi",
         "davivienda",
@@ -446,12 +441,7 @@ export const AGENT_TOOLS = {
       userId: z.number().int().positive(),
       monto: z.number().int().positive(),
       referencia: z.string().min(1),
-      medioPagoAdmin: z.enum([
-        "nequi_nicolas",
-        "davivienda",
-        "efectivo",
-        "datafono",
-      ]),
+      medioPagoAdmin: z.enum(["efectivo", "bancolombia_cim"]),
       contexto: z.enum(["inicial", "cuota_adelantada", "visita"]),
     }),
     handler: async (args) =>

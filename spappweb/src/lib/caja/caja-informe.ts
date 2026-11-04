@@ -2,6 +2,7 @@ import { CONTEXTO_PAGO_LABELS, MEDIO_PAGO_ADMIN_LABELS } from "@/lib/pipeline/ty
 import type { MedioPagoAdminStored } from "@/lib/pipeline/types";
 import {
   CAJA_MEDIO_EGRESO_LABELS,
+  classifyMedioEgreso,
   classifyMedioPago,
   type CajaMedioEgreso,
 } from "@/lib/caja/caja-medios";
@@ -56,10 +57,16 @@ export interface CajaEgresoRow {
 
 export interface CajaInformeEgresos {
   efectivo: number;
-  nequi: number;
-  davivienda: number;
+  bancolombia: number;
   total: number;
   cantidad: number;
+}
+
+export interface CajaInformeTransferencias {
+  monto: number;
+  cantidad: number;
+  pagosCredito: number;
+  pagosSalida: number;
 }
 
 export interface CajaInformeIngresos {
@@ -74,18 +81,11 @@ export interface CajaInformeIngresos {
     pagosSalida: number;
     esperadoEnCaja: number;
   };
-  nequi: {
-    monto: number;
-    cantidad: number;
-    pagosCredito: number;
-    pagosSalida: number;
-  };
-  davivienda: {
-    monto: number;
-    cantidad: number;
-    pagosCredito: number;
-    pagosSalida: number;
-  };
+  bancolombia: CajaInformeTransferencias;
+  /** @deprecated Informes guardados antes de Bancolombia CIM */
+  nequi?: CajaInformeTransferencias;
+  /** @deprecated Informes guardados antes de Bancolombia CIM */
+  davivienda?: CajaInformeTransferencias;
   ingresosDia: number;
   egresosDia: number;
   netoDia: number;
@@ -95,7 +95,10 @@ export interface CajaInformeIngresos {
     cantidad: number;
   };
   pagos: CajaPagoConfirmadoRow[];
-  egresos: CajaInformeEgresos;
+  egresos: CajaInformeEgresos & {
+    nequi?: number;
+    davivienda?: number;
+  };
   egresosDetalle: CajaEgresoRow[];
 }
 
@@ -107,7 +110,51 @@ function medioLabel(medio: string | null): string {
   if (medio in CAJA_MEDIO_EGRESO_LABELS) {
     return CAJA_MEDIO_EGRESO_LABELS[medio as CajaMedioEgreso];
   }
+  if (medio === "nequi") return "Nequi";
+  if (medio === "davivienda") return "Davivienda / Daviplata";
   return medio;
+}
+
+function emptyTransferencias(): CajaInformeTransferencias {
+  return { monto: 0, cantidad: 0, pagosCredito: 0, pagosSalida: 0 };
+}
+
+/** Normaliza informes guardados con Nequi/Davivienda al shape actual. */
+export function normalizeCajaInforme(
+  raw: CajaInformeIngresos,
+): CajaInformeIngresos {
+  if (raw.bancolombia) {
+    return {
+      ...raw,
+      egresos: {
+        efectivo: raw.egresos.efectivo,
+        bancolombia:
+          raw.egresos.bancolombia ??
+          (raw.egresos.nequi ?? 0) + (raw.egresos.davivienda ?? 0),
+        total: raw.egresos.total,
+        cantidad: raw.egresos.cantidad,
+      },
+    };
+  }
+
+  const nequi = raw.nequi ?? emptyTransferencias();
+  const davivienda = raw.davivienda ?? emptyTransferencias();
+  return {
+    ...raw,
+    bancolombia: {
+      monto: nequi.monto + davivienda.monto,
+      cantidad: nequi.cantidad + davivienda.cantidad,
+      pagosCredito: nequi.pagosCredito + davivienda.pagosCredito,
+      pagosSalida: nequi.pagosSalida + davivienda.pagosSalida,
+    },
+    egresos: {
+      efectivo: raw.egresos.efectivo,
+      bancolombia:
+        (raw.egresos.nequi ?? 0) + (raw.egresos.davivienda ?? 0),
+      total: raw.egresos.total,
+      cantidad: raw.egresos.cantidad,
+    },
+  };
 }
 
 export function buildCajaInforme(input: {
@@ -154,26 +201,29 @@ export function buildCajaInforme(input: {
     };
   });
 
-  const egresosDetalle: CajaEgresoRow[] = input.egresosRaw.map((e) => ({
-    id: e.id,
-    concepto: e.concepto,
-    beneficiario: e.beneficiario,
-    monto: e.monto,
-    medio: e.medio_pago as CajaMedioEgreso,
-    medioLabel: CAJA_MEDIO_EGRESO_LABELS[e.medio_pago as CajaMedioEgreso],
-    notas: e.notas,
-    createdAt: e.created_at,
-  }));
+  const egresosDetalle: CajaEgresoRow[] = input.egresosRaw.map((e) => {
+    const kind = classifyMedioEgreso(e.medio_pago);
+    const medio: CajaMedioEgreso =
+      kind === "bancolombia" ? "bancolombia" : "efectivo";
+    return {
+      id: e.id,
+      concepto: e.concepto,
+      beneficiario: e.beneficiario,
+      monto: e.monto,
+      medio,
+      medioLabel: CAJA_MEDIO_EGRESO_LABELS[medio],
+      notas: e.notas,
+      createdAt: e.created_at,
+    };
+  });
 
   let pagosEfectivo = 0;
   let pagosCreditoEfectivo = 0;
   let pagosVisitaEfectivo = 0;
-  let pagosNequi = 0;
-  let pagosDavivienda = 0;
+  let pagosBancolombia = 0;
   let pagosVisita = 0;
   let countVisita = 0;
-  let countNequi = 0;
-  let countDavivienda = 0;
+  let countBancolombia = 0;
 
   for (const p of pagos) {
     const kind = classifyMedioPago(p.medio);
@@ -188,12 +238,9 @@ export function buildCajaInforme(input: {
     if (kind === "efectivo") {
       pagosEfectivo += p.monto;
       if (!isVisita) pagosCreditoEfectivo += p.monto;
-    } else if (kind === "nequi") {
-      pagosNequi += p.monto;
-      countNequi += 1;
-    } else if (kind === "davivienda") {
-      pagosDavivienda += p.monto;
-      countDavivienda += 1;
+    } else if (kind === "bancolombia") {
+      pagosBancolombia += p.monto;
+      countBancolombia += 1;
     } else {
       pagosEfectivo += p.monto;
       if (!isVisita) pagosCreditoEfectivo += p.monto;
@@ -201,24 +248,20 @@ export function buildCajaInforme(input: {
   }
 
   let egresoEfectivo = 0;
-  let egresoNequi = 0;
-  let egresoDavivienda = 0;
+  let egresoBancolombia = 0;
 
   for (const e of egresosDetalle) {
     if (e.medio === "efectivo") egresoEfectivo += e.monto;
-    else if (e.medio === "nequi") egresoNequi += e.monto;
-    else if (e.medio === "davivienda") egresoDavivienda += e.monto;
+    else egresoBancolombia += e.monto;
   }
 
-  const egresosDia =
-    egresoEfectivo + egresoNequi + egresoDavivienda;
+  const egresosDia = egresoEfectivo + egresoBancolombia;
 
   const ingresosDia =
     input.ventasProducto +
     input.ventasMoto +
     pagosEfectivo +
-    pagosNequi +
-    pagosDavivienda +
+    pagosBancolombia +
     input.entradas -
     input.salidas;
 
@@ -243,17 +286,11 @@ export function buildCajaInforme(input: {
       pagosSalida: egresoEfectivo,
       esperadoEnCaja,
     },
-    nequi: {
-      monto: pagosNequi,
-      cantidad: countNequi,
-      pagosCredito: pagosNequi,
-      pagosSalida: egresoNequi,
-    },
-    davivienda: {
-      monto: pagosDavivienda,
-      cantidad: countDavivienda,
-      pagosCredito: pagosDavivienda,
-      pagosSalida: egresoDavivienda,
+    bancolombia: {
+      monto: pagosBancolombia,
+      cantidad: countBancolombia,
+      pagosCredito: pagosBancolombia,
+      pagosSalida: egresoBancolombia,
     },
     ingresosDia,
     egresosDia,
@@ -266,8 +303,7 @@ export function buildCajaInforme(input: {
     pagos,
     egresos: {
       efectivo: egresoEfectivo,
-      nequi: egresoNequi,
-      davivienda: egresoDavivienda,
+      bancolombia: egresoBancolombia,
       total: egresosDia,
       cantidad: egresosDetalle.length,
     },

@@ -11,16 +11,15 @@ import {
 } from "@/lib/payments/referencia";
 import { getStoragePublicUrl } from "@/lib/utils/storage-urls";
 import type { MedioPagoAdmin } from "@/lib/pipeline/types";
+import {
+  MEDIO_PAGO_ADMIN_OPTIONS,
+  isPresencialMedioPago,
+} from "@/lib/pipeline/types";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-const MEDIO_PAGO_ADMIN_VALUES = [
-  "nequi_nicolas",
-  "davivienda",
-  "efectivo",
-  "datafono",
-] as const;
+const MEDIO_PAGO_ADMIN_VALUES = MEDIO_PAGO_ADMIN_OPTIONS;
 
 function revalidateClient(userId: number) {
   revalidatePath("/inbox");
@@ -63,7 +62,7 @@ function optionalImageFile(file: unknown): File | null {
 }
 
 function isPresencialMedio(medio: MedioPagoAdmin): boolean {
-  return medio === "efectivo" || medio === "datafono";
+  return isPresencialMedioPago(medio);
 }
 
 function resolveReferenciaPresencial(
@@ -73,7 +72,6 @@ function resolveReferenciaPresencial(
   const trimmed = referencia.trim();
   if (trimmed) return normalizeReferencia(trimmed);
   if (medio === "efectivo") return `EF-${Date.now()}`;
-  if (medio === "datafono") return `DF-${Date.now()}`;
   return trimmed;
 }
 

@@ -142,10 +142,8 @@ export async function executeChatAction(input: {
         monto: num(v.monto),
         referencia: str(v.referencia),
         medioPagoAdmin: str(v.medioPagoAdmin) as
-          | "nequi_nicolas"
-          | "davivienda"
           | "efectivo"
-          | "datafono",
+          | "bancolombia_cim",
         contexto: str(v.contexto) as "inicial" | "cuota_adelantada" | "visita",
       }),
     );
@@ -410,7 +408,7 @@ export async function executeChatAction(input: {
         concepto: str(v.concepto),
         beneficiario: str(v.beneficiario) || undefined,
         monto: num(v.monto),
-        medioPago: str(v.medioPago) as "efectivo" | "nequi" | "davivienda",
+        medioPago: str(v.medioPago) as "efectivo" | "bancolombia",
         notas: str(v.notas) || undefined,
       }),
     );
@@ -426,9 +424,7 @@ export async function executeChatAction(input: {
         userId: num(v.userId),
         medioPagoAdmin: (str(v.medioPagoAdmin) || "efectivo") as
           | "efectivo"
-          | "datafono"
-          | "nequi_nicolas"
-          | "davivienda",
+          | "bancolombia_cim",
       }),
     );
   }

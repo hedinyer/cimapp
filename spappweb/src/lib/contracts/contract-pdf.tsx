@@ -290,7 +290,7 @@ export async function generateHojaVidaPdf(args: {
         <Line>{`MODELO: ${c?.modelo ?? "__________"}`}</Line>
         <Text style={styles.sectionTitle}>FORMA DE PAGO</Text>
         <Line>{`CUOTA INICIAL ${c?.cuotaInicial ?? "$__________"} FECHA: ___________`}</Line>
-        <Line>MEDIO EFECTIVO ___ NEQUI _____BANCOLOMBIA ___ DAVIPLATA __DAVIVIENDA</Line>
+        <Line>MEDIO EFECTIVO ___ BANCOLOMBIA CIM ___</Line>
         <Line>MEDIO PAGO-REFRENCIA ________ ____________ _________ _________________</Line>
         <Line>{`VALOR CUOTA: ${c?.valorCuota ?? "$ __________"} TIEMPO: ${c?.frecuenciaPago ?? "________"} MODALIDAD PAGO: ${c?.frecuenciaPago ?? "__________"}`}</Line>
         <Line>OTRAS DEUDAS: ___________ CONCEPTO _____________PLAZO PAGO ___________</Line>

@@ -19,6 +19,7 @@ import {
   CONTEXTO_PAGO_LABELS,
   MEDIO_PAGO_ADMIN_LABELS,
   MEDIO_PAGO_ADMIN_OPTIONS,
+  isPresencialMedioPago,
   type BancoOrigen,
   type ContextoPago,
   type MedioPagoAdmin,
@@ -61,7 +62,7 @@ interface PaymentComprobanteDialogProps {
 }
 
 function isPresencialMedio(medio: MedioPagoAdmin): boolean {
-  return medio === "efectivo" || medio === "datafono";
+  return isPresencialMedioPago(medio);
 }
 
 function toDatetimeLocal(iso: string | null): string {
@@ -106,7 +107,7 @@ export function PaymentComprobanteDialog({
   motoModelo = "",
   motoColor = "",
   placa = null,
-  initialMedioPago = "nequi_nicolas",
+  initialMedioPago = "bancolombia_cim",
   onSuccess,
 }: PaymentComprobanteDialogProps) {
   const sugeridoMonto = montoFaltante ?? montoEsperado;
@@ -114,7 +115,7 @@ export function PaymentComprobanteDialog({
   const [pending, startTransition] = useTransition();
   const [ocrPending, startOcrTransition] = useTransition();
   const [file, setFile] = useState<File | null>(null);
-  const [bancoOrigen, setBancoOrigen] = useState<BancoOrigen>("nequi");
+  const [bancoOrigen, setBancoOrigen] = useState<BancoOrigen>("bancolombia");
   const [medioPagoAdmin, setMedioPagoAdmin] =
     useState<MedioPagoAdmin>(initialMedioPago);
   const [referencia, setReferencia] = useState("");
@@ -168,7 +169,7 @@ export function PaymentComprobanteDialog({
   useEffect(() => {
     if (!open) return;
     setFile(null);
-    setBancoOrigen("nequi");
+    setBancoOrigen("bancolombia");
     setMedioPagoAdmin(initialMedioPago);
     setReferencia("");
     setMonto(sugeridoMonto ? String(sugeridoMonto) : "");
@@ -196,10 +197,12 @@ export function PaymentComprobanteDialog({
     setMedioPagoAdmin(value);
     if (isPresencialMedio(value)) {
       setFile(null);
-      setBancoOrigen("nequi");
+      setBancoOrigen("bancolombia");
       setConfidence(null);
       ocrFileKeyRef.current = null;
       if (!fecha) setFecha(nowDatetimeLocal());
+    } else {
+      setBancoOrigen("bancolombia");
     }
   }
 
@@ -373,9 +376,7 @@ export function PaymentComprobanteDialog({
           {presencial ? (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
               Pago presencial ({MEDIO_PAGO_ADMIN_LABELS[medioPagoAdmin]}). No
-              requiere foto ni referencia
-              {esEfectivo ? "" : " (voucher datáfono opcional)"}
-              ; al guardar se imprime el recibo.
+              requiere foto ni referencia; al guardar se imprime el recibo.
             </div>
           ) : (
             <>
@@ -446,9 +447,7 @@ export function PaymentComprobanteDialog({
                 setEntradaManual(true);
               }}
               placeholder={
-                presencial
-                  ? "Voucher datáfono (opcional)"
-                  : "Ej. M12636825"
+                presencial ? "Opcional" : "Ej. M12636825"
               }
               disabled={pending || ocrPending}
               aria-invalid={referenciaDuplicada}

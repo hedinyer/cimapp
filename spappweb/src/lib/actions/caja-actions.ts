@@ -4,12 +4,17 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   buildCajaInforme,
+  normalizeCajaInforme,
   type CajaEgresoRow,
   type CajaInformeIngresos,
   type CajaVisitasResumen,
 } from "@/lib/caja/caja-informe";
-import { MEDIO_PAGO_ADMIN_LABELS } from "@/lib/pipeline/types";
-import type { MedioPagoAdmin, MedioPagoAdminStored } from "@/lib/pipeline/types";
+import {
+  MEDIO_PAGO_ADMIN_LABELS,
+  MEDIO_PAGO_ADMIN_OPTIONS,
+  medioPagoUsuarioFromAdmin,
+} from "@/lib/pipeline/types";
+import type { MedioPagoAdminStored } from "@/lib/pipeline/types";
 import { faltanteConcepto } from "@/lib/payments/primer-pago-progress";
 import type { PagoRow, UserMotoCompraRow } from "@/lib/pipeline/types";
 import {
@@ -404,15 +409,14 @@ export async function getCajaSesionHoy(): Promise<CajaSesionState | null> {
       String(raw.fecha),
     );
 
-  const informeFinal =
+  const informeFinal = normalizeCajaInforme(
     raw.closed_at && storedInforme
       ? {
           ...storedInforme,
-          visitas:
-            storedInforme.visitas ??
-            informe.visitas,
+          visitas: storedInforme.visitas ?? informe.visitas,
         }
-      : informe;
+      : informe,
+  );
 
   return toSesionState(
     raw,
@@ -608,19 +612,10 @@ const cobroVisitaSchema = z.object({
   compraId: z.string().uuid(),
   userId: z.number().int().positive(),
   medioPagoAdmin: z
-    .enum(["efectivo", "datafono", "nequi_nicolas", "davivienda"])
+    .enum(MEDIO_PAGO_ADMIN_OPTIONS)
     .optional()
     .default("efectivo"),
 });
-
-function medioPagoUsuarioFromAdmin(
-  medio: MedioPagoAdmin,
-): "nequi" | "davivienda" | "efectivo" | "datafono" {
-  if (medio === "davivienda") return "davivienda";
-  if (medio === "efectivo") return "efectivo";
-  if (medio === "datafono") return "datafono";
-  return "nequi";
-}
 
 export async function registrarCobroVisitaDesdeCaja(
   input: z.infer<typeof cobroVisitaSchema>,

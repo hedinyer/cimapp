@@ -51,16 +51,14 @@ export function CajaInformePanel({
   title?: string;
   compact?: boolean;
 }) {
-  const { efectivo, nequi, davivienda, egresos } = informe;
+  const { efectivo, bancolombia, egresos } = informe;
   const visitasPendientes = visitasResumen?.totalPendiente ?? 0;
   const showVisitasLine =
     informe.visitas.monto > 0 ||
     informe.visitas.cantidad > 0 ||
     visitasPendientes > 0;
-  const tieneTransferenciasIn =
-    nequi.monto > 0 || davivienda.monto > 0;
-  const tieneTransferenciasOut =
-    nequi.pagosSalida > 0 || davivienda.pagosSalida > 0;
+  const tieneTransferenciasIn = bancolombia.monto > 0;
+  const tieneTransferenciasOut = bancolombia.pagosSalida > 0;
 
   return (
     <div className="flex flex-col gap-3">
@@ -77,7 +75,7 @@ export function CajaInformePanel({
         {showVisitasLine ? (
           <>
             <Line
-              label="Visitas cobradas (efectivo/datáfono)"
+              label="Visitas cobradas (efectivo)"
               value={efectivo.pagosVisitaEfectivo ?? 0}
               sign="+"
             />
@@ -112,11 +110,10 @@ export function CajaInformePanel({
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Ingresos · transferencias
           </p>
-          <Line label="Nequi" value={nequi.monto} count={nequi.cantidad} sign="+" />
           <Line
-            label="Davivienda / Daviplata"
-            value={davivienda.monto}
-            count={davivienda.cantidad}
+            label="Bancolombia CIM"
+            value={bancolombia.monto}
+            count={bancolombia.cantidad}
             sign="+"
           />
         </div>
@@ -133,10 +130,9 @@ export function CajaInformePanel({
             sign="−"
             negative
           />
-          <Line label="Nequi" value={egresos.nequi} sign="−" negative />
           <Line
-            label="Davivienda / Daviplata"
-            value={egresos.davivienda}
+            label="Bancolombia CIM"
+            value={egresos.bancolombia}
             sign="−"
             negative
           />
@@ -149,7 +145,7 @@ export function CajaInformePanel({
 
       {tieneTransferenciasOut && !compact ? (
         <p className="text-xs text-muted-foreground">
-          Los pagos por Nequi o Davivienda no afectan el efectivo físico en caja.
+          Los pagos por Bancolombia CIM no afectan el efectivo físico en caja.
         </p>
       ) : null}
 

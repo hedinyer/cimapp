@@ -201,7 +201,7 @@ identidad o `uuid`. `created_at/updated_at` con triggers `set_*_updated_at`.
 ### `pagos` — pagos registrados
 `id` (uuid PK), `user_moto_compra_id`, `user_id`, `monto` (>0), `dias_cubiertos`,
 `medio_pago_usuario` (`nequi|davivienda|efectivo`),
-`medio_pago_admin` (cuentas Nequi configuradas del cliente | `davivienda` | `efectivo`),
+`medio_pago_admin` (`efectivo` | `bancolombia_cim`; legacy: Nequi/Davivienda/datáfono),
 `referencia` (única por cliente), `comprobante_url`,
 `origen` (`usuario|admin`), `estado` (`pendiente_confirmacion|confirmado|rechazado`),
 `reportado_at`, `confirmado_at`, `confirmado_por`, `rechazado_at`, `motivo_rechazo`,

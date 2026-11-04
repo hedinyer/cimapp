@@ -285,7 +285,7 @@ export function CreditProductsPanel({
                             setPagoDialog({
                               item,
                               concepto: "producto_inicial",
-                              medio: "nequi_nicolas",
+                              medio: "bancolombia_cim",
                             })
                           }
                           onAddEfectivo={() =>
@@ -321,7 +321,7 @@ export function CreditProductsPanel({
                             setPagoDialog({
                               item,
                               concepto: "producto_cuota",
-                              medio: "nequi_nicolas",
+                              medio: "bancolombia_cim",
                             })
                           }
                           onAddEfectivo={() =>

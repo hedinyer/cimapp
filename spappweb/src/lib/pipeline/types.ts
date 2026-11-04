@@ -608,24 +608,29 @@ export type ContextoPago =
   | "liquidacion"
   | "producto_inicial"
   | "producto_cuota";
-export type MedioPagoAdmin =
-  | "nequi_nicolas"
-  | "davivienda"
-  | "efectivo"
-  | "datafono";
+export const MEDIO_PAGO_ADMIN_OPTIONS = [
+  "efectivo",
+  "bancolombia_cim",
+] as const;
+
+export type MedioPagoAdmin = (typeof MEDIO_PAGO_ADMIN_OPTIONS)[number];
 
 export type MedioPagoAdminLegacy =
+  | "nequi_nicolas"
   | "nequi_pedro"
-  | "nequi_titular";
+  | "nequi_titular"
+  | "davivienda"
+  | "datafono";
 
 export type MedioPagoAdminStored = MedioPagoAdmin | MedioPagoAdminLegacy;
 
-export const MEDIO_PAGO_ADMIN_OPTIONS: MedioPagoAdmin[] = [
-  "nequi_nicolas",
-  "davivienda",
-  "efectivo",
-  "datafono",
-];
+export type MedioPagoUsuario =
+  | "nequi"
+  | "davivienda"
+  | "efectivo"
+  | "datafono"
+  | "bancolombia";
+
 export type BancoOrigen =
   | "nequi"
   | "davivienda"
@@ -641,7 +646,7 @@ export interface PagoRow {
   user_id: number;
   monto: number;
   dias_cubiertos: number | null;
-  medio_pago_usuario: "nequi" | "davivienda" | "efectivo" | "datafono";
+  medio_pago_usuario: MedioPagoUsuario;
   medio_pago_admin: MedioPagoAdminStored | null;
   referencia: string | null;
   comprobante_url: string | null;
@@ -671,13 +676,30 @@ export const CONTEXTO_PAGO_LABELS: Record<ContextoPago, string> = {
 };
 
 export const MEDIO_PAGO_ADMIN_LABELS: Record<MedioPagoAdminStored, string> = {
+  efectivo: "Efectivo",
+  bancolombia_cim: "Bancolombia CIM",
   nequi_nicolas: "Nequi — Nicolás",
   nequi_pedro: "Nequi — Pedro",
   nequi_titular: "Nequi — CONFIGURAR",
   davivienda: "Davivienda",
-  efectivo: "Efectivo",
   datafono: "Datáfono",
 };
+
+export function isPresencialMedioPago(
+  medio: MedioPagoAdmin | MedioPagoAdminStored,
+): boolean {
+  return medio === "efectivo" || medio === "datafono";
+}
+
+export function medioPagoUsuarioFromAdmin(
+  medio: MedioPagoAdmin | MedioPagoAdminStored,
+): MedioPagoUsuario {
+  if (medio === "efectivo") return "efectivo";
+  if (medio === "datafono") return "datafono";
+  if (medio === "davivienda") return "davivienda";
+  if (medio === "bancolombia_cim") return "bancolombia";
+  return "nequi";
+}
 
 export const BANCO_ORIGEN_LABELS: Record<BancoOrigen, string> = {
   nequi: "Nequi",

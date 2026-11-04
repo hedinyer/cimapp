@@ -33,9 +33,7 @@ export type ChatCardSpec = {
 
 const medioPago = [
   { value: "efectivo", label: "Efectivo" },
-  { value: "datafono", label: "Datáfono" },
-  { value: "nequi_nicolas", label: "Nequi" },
-  { value: "davivienda", label: "Davivienda" },
+  { value: "bancolombia_cim", label: "Bancolombia CIM" },
 ];
 
 const banco = [
@@ -528,8 +526,7 @@ export const CHAT_CARDS: ChatCardSpec[] = [
       n("monto", "Monto"),
       sel("medioPago", "Medio", [
         { value: "efectivo", label: "Efectivo" },
-        { value: "nequi", label: "Nequi" },
-        { value: "davivienda", label: "Davivienda" },
+        { value: "bancolombia", label: "Bancolombia CIM" },
       ]),
       t("notas", "Notas"),
     ],
@@ -683,9 +680,9 @@ export const CHAT_CARDS: ChatCardSpec[] = [
       n("userId", "Id del cliente"),
       t("compraId", "Id de la compra", { required: true }),
       n("monto", "Monto"),
-      sel("medioPagoAdmin", "Medio (efectivo o datáfono en el chat)", [
+      sel("medioPagoAdmin", "Medio de pago", [
         { value: "efectivo", label: "Efectivo" },
-        { value: "datafono", label: "Datáfono" },
+        { value: "bancolombia_cim", label: "Bancolombia CIM" },
       ]),
       t("referencia", "Referencia"),
       t("notas", "Notas"),

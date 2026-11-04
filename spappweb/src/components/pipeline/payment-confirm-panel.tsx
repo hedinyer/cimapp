@@ -79,7 +79,7 @@ export function PaymentConfirmPanel({
   const [dialogContexto, setDialogContexto] =
     useState<PrimerPagoConcepto>("inicial");
   const [dialogMedio, setDialogMedio] =
-    useState<MedioPagoAdmin>("nequi_nicolas");
+    useState<MedioPagoAdmin>("bancolombia_cim");
 
   if (!compra) {
     return (
@@ -110,7 +110,7 @@ export function PaymentConfirmPanel({
 
   function openAbonoDialog(
     contexto: PrimerPagoConcepto,
-    medio: MedioPagoAdmin = "nequi_nicolas",
+    medio: MedioPagoAdmin = "bancolombia_cim",
   ) {
     setDialogContexto(contexto);
     setDialogMedio(medio);
@@ -123,8 +123,8 @@ export function PaymentConfirmPanel({
         <CardHeader>
           <CardTitle>Confirmar pagos</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Registra abonos por concepto. Medios: Nequi, Davivienda, efectivo o
-            datáfono. Efectivo y datáfono generan recibo para impresora.
+            Registra abonos por concepto. Medios: Efectivo o Bancolombia CIM.
+            Efectivo genera recibo para impresora.
           </p>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
@@ -568,7 +568,7 @@ function EditAbonoDialog({
 }) {
   const [monto, setMonto] = useState("");
   const [referencia, setReferencia] = useState("");
-  const [medio, setMedio] = useState<MedioPagoAdmin>("nequi_nicolas");
+  const [medio, setMedio] = useState<MedioPagoAdmin>("bancolombia_cim");
   const [contexto, setContexto] =
     useState<PrimerPagoConcepto>(defaultContexto);
   const [pending, startTransition] = useTransition();
@@ -582,7 +582,7 @@ function EditAbonoDialog({
       stored &&
         (MEDIO_PAGO_ADMIN_OPTIONS as readonly string[]).includes(stored)
         ? (stored as MedioPagoAdmin)
-        : "nequi_nicolas",
+        : "bancolombia_cim",
     );
     setContexto(
       abono.contexto_pago === "inicial" ||

@@ -33,21 +33,21 @@ import type {
   PagoRow,
   UserMotoCompraRow,
 } from "@/lib/pipeline/types";
-import { BANCO_ORIGEN_LABELS } from "@/lib/pipeline/types";
+import {
+  BANCO_ORIGEN_LABELS,
+  MEDIO_PAGO_ADMIN_OPTIONS,
+  isPresencialMedioPago,
+  medioPagoUsuarioFromAdmin,
+} from "@/lib/pipeline/types";
 import { recalcularTarifasProductoCredito } from "@/lib/payments/tarifas-producto-credito";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-const MEDIO_PAGO_ADMIN_VALUES = [
-  "nequi_nicolas",
-  "davivienda",
-  "efectivo",
-  "datafono",
-] as const;
+const MEDIO_PAGO_ADMIN_VALUES = MEDIO_PAGO_ADMIN_OPTIONS;
 
 function isPresencialMedio(medio: MedioPagoAdmin): boolean {
-  return medio === "efectivo" || medio === "datafono";
+  return isPresencialMedioPago(medio);
 }
 
 function resolveReferenciaPresencial(
@@ -57,7 +57,6 @@ function resolveReferenciaPresencial(
   const trimmed = referencia.trim();
   if (trimmed) return normalizeReferencia(trimmed);
   if (medio === "efectivo") return `EF-${Date.now()}`;
-  if (medio === "datafono") return `DF-${Date.now()}`;
   return trimmed;
 }
 
@@ -99,15 +98,6 @@ function validateImageFile(file: unknown): File {
 function optionalImageFile(file: unknown): File | null {
   if (!(file instanceof File) || file.size === 0) return null;
   return validateImageFile(file);
-}
-
-function medioPagoUsuarioFromAdmin(
-  medio: MedioPagoAdmin,
-): "nequi" | "davivienda" | "efectivo" | "datafono" {
-  if (medio === "davivienda") return "davivienda";
-  if (medio === "efectivo") return "efectivo";
-  if (medio === "datafono") return "datafono";
-  return "nequi";
 }
 
 async function assertReferenciaUnicaPorCliente(

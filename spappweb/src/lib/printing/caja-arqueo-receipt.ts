@@ -43,8 +43,7 @@ export function buildCajaArqueoReceiptHtml(
   const f = folio(sesion.id);
   const { all4cfl: empresaLogo, bera: beraLogo } = receiptLogoUrls(origin);
   const e = sesion.informe.efectivo;
-  const nequi = sesion.informe.nequi;
-  const davi = sesion.informe.davivienda;
+  const bancolombia = sesion.informe.bancolombia;
   const egresos = sesion.informe.egresos;
   const contado = sesion.montoCierre ?? 0;
   const esperado = sesion.efectivoEsperado;
@@ -133,10 +132,8 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: now
 <div class="block">
   <div class="label">Transferencias y egresos</div>
   <table>
-    ${line(`Nequi ingresos (${nequi.cantidad})`, nequi.monto, { skipZero: false })}
-    ${line("Nequi egresos", nequi.pagosSalida)}
-    ${line(`Davivienda ingresos (${davi.cantidad})`, davi.monto, { skipZero: false })}
-    ${line("Davivienda egresos", davi.pagosSalida)}
+    ${line(`Bancolombia CIM ingresos (${bancolombia.cantidad})`, bancolombia.monto, { skipZero: false })}
+    ${line("Bancolombia CIM egresos", bancolombia.pagosSalida)}
     ${line(`Egresos totales (${egresos.cantidad})`, egresos.total, { skipZero: false })}
     ${line("Ingresos del día", sesion.informe.ingresosDia, { skipZero: false })}
     ${line("Neto del día", sesion.informe.netoDia, { skipZero: false })}
