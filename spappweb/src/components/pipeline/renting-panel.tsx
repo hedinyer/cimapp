@@ -525,8 +525,8 @@ export function RentingPanel({ pipeline, userId }: RentingPanelProps) {
 
           {tarifas.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Aún no hay calendario de tarifas. Se genera al confirmar el pago
-              (lista para retiro).
+              Aún no hay calendario de tarifas. Se genera al entregar la moto en
+              CIM; la 1ª cuota vence al día siguiente.
             </p>
           ) : (
             <>

@@ -127,9 +127,11 @@ Detalle: [`integrations/hermes/PIPELINE_EVENTS.md`](integrations/hermes/PIPELINE
   (`cuota_inicial_monto`) y `cuota_adelantada` (`monto_cuota_periodo`). Cuando ambos
   flags (`pago_inicial_confirmado`, `pago_cuota_confirmado`) están en true, la compra
   pasa a `lista_retiro` (vía triggers).
-- **Tarifas de renting** (`tarifas_pagadas`): se generan automáticamente al marcar la
-  entrega (`generate_tarifas_on_entrega`). Frecuencias: `diario | semanal | quincenal
-  | mensual`. Estados: `pendiente | pagada | vencida`.
+- **Tarifas de renting** (`tarifas_pagadas`): se generan al marcar la entrega en CIM
+  (`generate_tarifas_on_entrega`). La 1ª cuota vence el día siguiente a
+  `fecha_entrega` (`compra_fecha_inicio_tarifas`). No se generan en `lista_retiro`.
+  Frecuencias: `diario | semanal | quincenal | mensual`. Estados:
+  `pendiente | pagada | vencida`.
 - **Pagos** (`pagos`): cada pago confirmado se aplica a tarifas vía triggers
   (`aplicar_pago_confirmado`, `pago_tarifa_aplicaciones`). **Referencia única por
   cliente** (constraint → error `23505`). En efectivo sin referencia se genera
@@ -271,9 +273,9 @@ rotación nocturna vía `rotate_nightly_location`).
 ### Vista `atrasos` (solo lectura — fuente de verdad de la mora)
 Por cada `user_moto_compra` con `estado='entregada'` calcula: `dias_atraso`,
 `monto_adeudado`, `periodos_debidos/pagados`, `monto_esperado/pagado`,
-`tarifa_vencida_id` y `estado` (`al_dia | vencido | moroso`). Usa la fecha de inicio
-(`fecha_entrega` o `signed_at` o `seleccionado_at`) y `tarifa_period_config` para los
-intervalos.
+`tarifa_vencida_id` y `estado` (`al_dia | vencido | moroso`). Ancla:
+`compra_fecha_inicio_tarifas` (= día siguiente a `fecha_entrega`) y
+`tarifa_period_config` para los intervalos.
 
 ### Funciones RPC y triggers relevantes
 - **Login**: `verify_admin_login`, `verify_visitador_login`, `verify_login`.

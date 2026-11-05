@@ -441,12 +441,12 @@ export const blocks: ClausulaBlock[] = [
       {
         titulo: "SEXTA. PLAZO.",
         texto:
-          "El plazo será de [DURACION], contado desde la fecha de entrega material. La prórroga requerirá acuerdo escrito de las partes, salvo renovación expresamente prevista en las Condiciones Particulares.",
+          "El presente contrato empieza a correr con la entrega material de la motocicleta en las instalaciones de CIM. El plazo será de [DURACION], contado desde esa fecha de entrega. La prórroga requerirá acuerdo escrito de las partes, salvo renovación expresamente prevista en las Condiciones Particulares.",
       },
       {
         titulo: "SÉPTIMA. CANON.",
         texto:
-          "EL ARRENDATARIO pagará un canon de [VALOR_CUOTA] ([FRECUENCIA_PAGO]), más los impuestos que legalmente correspondan. Valor total estimado del contrato: [TOTAL_CONTRATO]. Cuota inicial: [CUOTA_INICIAL], pagadera al momento de la entrega.\n\n[FORMA_PAGO_SALDO]\n\nLas cuotas deberán pagarse [HORARIO_COBRO], empezando a partir del día siguiente de la suscripción del presente contrato. Medios de pago: [MEDIOS_PAGO]. La fecha, medio de pago, periodicidad y demás componentes económicos también constarán en el Anexo de Condiciones Particulares cuando aplique.",
+          "EL ARRENDATARIO pagará un canon de [VALOR_CUOTA] ([FRECUENCIA_PAGO]), más los impuestos que legalmente correspondan. Valor total estimado del contrato: [TOTAL_CONTRATO]. Cuota inicial: [CUOTA_INICIAL], pagadera al momento de la entrega.\n\n[FORMA_PAGO_SALDO]\n\nLas cuotas deberán pagarse [HORARIO_COBRO], empezando a partir del día siguiente de la entrega material de la motocicleta en CIM. Medios de pago: [MEDIOS_PAGO]. La fecha, medio de pago, periodicidad y demás componentes económicos también constarán en el Anexo de Condiciones Particulares cuando aplique.",
       },
       {
         titulo: "OCTAVA. MORA.",

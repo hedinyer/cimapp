@@ -88,7 +88,8 @@ export function todayBogotaYmd(): string {
   }).format(new Date());
 }
 
-/** Ancla de preview: mañana en Bogotá, sin domingo. */
+/** Ancla de preview (sin entrega aún): mañana en Bogotá, sin domingo.
+ *  El talonario real ancla a fecha_entrega + 1 vía compra_fecha_inicio_tarifas. */
 export function anclaPreviewYmd(): string {
   return formatIsoDateUtc(skipSunday(addUtcDays(parseIsoDateUtc(todayBogotaYmd()), 1)));
 }
