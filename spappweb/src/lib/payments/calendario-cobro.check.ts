@@ -15,12 +15,12 @@ import {
 
 assert.equal(diasCobroPorPeriodo("semanal"), 7);
 assert.equal(diasCobroPorPeriodo("semanal", CALENDARIO_LUN_SAB), 6);
-assert.equal(diasCobroPorPeriodo("quincenal", CALENDARIO_LUN_SAB), 12);
-assert.equal(diasCobroPorPeriodo("mensual", CALENDARIO_LUN_SAB), 24);
+assert.equal(diasCobroPorPeriodo("quincenal", CALENDARIO_LUN_SAB), 13);
+assert.equal(diasCobroPorPeriodo("mensual", CALENDARIO_LUN_SAB), 26);
 assert.equal(periodosAnuales("diario", CALENDARIO_LUN_SAB), 312);
 assert.equal(periodosAnuales("semanal", CALENDARIO_LUN_SAB), 52);
-assert.equal(periodosAnuales("quincenal", CALENDARIO_LUN_SAB), 26);
-assert.equal(periodosAnuales("mensual", CALENDARIO_LUN_SAB), 13);
+assert.equal(periodosAnuales("quincenal", CALENDARIO_LUN_SAB), 24);
+assert.equal(periodosAnuales("mensual", CALENDARIO_LUN_SAB), 12);
 
 assert.equal(calendarioFromAdminData(null), "lun_dom");
 assert.equal(calendarioFromAdminData({ calendario_cobro: "lun_sab" }), "lun_sab");

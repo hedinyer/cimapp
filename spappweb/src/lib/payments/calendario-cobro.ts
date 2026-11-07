@@ -12,7 +12,7 @@ export const DIAS_COBRO_POR_PERIODO: Record<
   Record<FrecuenciaPago, number>
 > = {
   lun_dom: { diario: 1, semanal: 7, quincenal: 15, mensual: 30 },
-  lun_sab: { diario: 1, semanal: 6, quincenal: 12, mensual: 24 },
+  lun_sab: { diario: 1, semanal: 6, quincenal: 13, mensual: 26 },
 };
 
 /** Cuotas de un año de cobro. */
@@ -21,7 +21,8 @@ export const PERIODOS_ANUALES_COBRO: Record<
   Record<FrecuenciaPago, number>
 > = {
   lun_dom: { diario: 365, semanal: 52, quincenal: 24, mensual: 12 },
-  lun_sab: { diario: 312, semanal: 52, quincenal: 26, mensual: 13 },
+  // 312 días lun–sáb: 13×24 quincenas, 26×12 meses.
+  lun_sab: { diario: 312, semanal: 52, quincenal: 24, mensual: 12 },
 };
 
 export function calendarioFromAdminData(adminData: unknown): CalendarioCobro {

@@ -91,6 +91,6 @@ export const FRECUENCIA_PERIOD: Record<FrecuenciaPago, string> = {
 export const FRECUENCIA_PERIOD_LUN_SAB: Record<FrecuenciaPago, string> = {
   diario: "lun–sáb · por día",
   semanal: "lun–sáb · 6 días por adelantado",
-  quincenal: "lun–sáb · 12 días por adelantado",
-  mensual: "lun–sáb · 24 días por adelantado",
+  quincenal: "lun–sáb · 13 días por adelantado",
+  mensual: "lun–sáb · 26 días por adelantado",
 };

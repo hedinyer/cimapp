@@ -18,20 +18,22 @@ const bike = {
 const conAdelantada = calcMotoPayment(bike, "semanal");
 assert.equal(conAdelantada.monto_cuota_periodo, 280_000);
 assert.equal(conAdelantada.monto_cuota_adelantada, 280_000);
-assert.equal(conAdelantada.monto_total_primer_pago, 400_000 + 280_000 + 35_000);
+// Visita la asume CIM (COBRA_VISITA_DOMICILIARIA = false).
+assert.equal(conAdelantada.monto_visita_monto, 0);
+assert.equal(conAdelantada.monto_total_primer_pago, 400_000 + 280_000);
 
 const sinAdelantada = calcMotoPayment(bike, "semanal", {
   cobraCuotaAdelantada: false,
 });
 assert.equal(sinAdelantada.monto_cuota_periodo, 280_000);
 assert.equal(sinAdelantada.monto_cuota_adelantada, 0);
-assert.equal(sinAdelantada.monto_total_primer_pago, 400_000 + 35_000);
+assert.equal(sinAdelantada.monto_total_primer_pago, 400_000);
 
 const parcial = calcMotoPayment(bike, "semanal", {
   cuotaAdelantada: 50_000,
 });
 assert.equal(parcial.monto_cuota_adelantada, 50_000);
-assert.equal(parcial.monto_total_primer_pago, 400_000 + 50_000 + 35_000);
+assert.equal(parcial.monto_total_primer_pago, 400_000 + 50_000);
 
 const ceroInicial = calcMotoPayment(bike, "semanal", {
   cuotaInicial: 0,
@@ -57,8 +59,8 @@ assert.equal(
 
 assert.equal(montoCuotaPeriodo(10_000, "semanal"), 70_000);
 assert.equal(montoCuotaPeriodo(10_000, "semanal", CALENDARIO_LUN_SAB), 60_000);
-assert.equal(montoCuotaPeriodo(10_000, "quincenal", CALENDARIO_LUN_SAB), 120_000);
-assert.equal(montoCuotaPeriodo(10_000, "mensual", CALENDARIO_LUN_SAB), 240_000);
+assert.equal(montoCuotaPeriodo(10_000, "quincenal", CALENDARIO_LUN_SAB), 130_000);
+assert.equal(montoCuotaPeriodo(10_000, "mensual", CALENDARIO_LUN_SAB), 260_000);
 
 const lunSab = calcMotoPayment(bike, "semanal", {
   cuotaDiaria: 10_000,
