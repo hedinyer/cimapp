@@ -43,6 +43,45 @@ function enlaceGoogleMaps(coords: string): string {
   return `https://www.google.com/maps?q=${encodeURIComponent(coords)}`;
 }
 
+type GpsHintLocal = {
+  deviceId: number;
+  imei?: string;
+  proveedor?: string;
+};
+
+function claveHintGps(placa: string, userId: number): string {
+  return `gps-hint:${userId}:${placa.trim().toUpperCase()}`;
+}
+
+function leerHintGps(placa: string, userId: number): GpsHintLocal | null {
+  try {
+    const raw = sessionStorage.getItem(claveHintGps(placa, userId));
+    if (!raw) return null;
+    const data = JSON.parse(raw) as GpsHintLocal;
+    if (!data?.deviceId || data.deviceId <= 0) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function guardarHintGps(
+  placa: string,
+  userId: number,
+  gps: UbicacionGpsMoto,
+): void {
+  try {
+    const hint: GpsHintLocal = {
+      deviceId: gps.deviceId,
+      imei: gps.imei || undefined,
+      proveedor: gpsMotoDesdeProveedor(gps.proveedor),
+    };
+    sessionStorage.setItem(claveHintGps(placa, userId), JSON.stringify(hint));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function GpsMotoPanel({
   placa,
   userId,
@@ -60,15 +99,18 @@ export function GpsMotoPanel({
   );
   const deviceIdRef = useRef(0);
   const imeiRef = useRef("");
+  const gpsMotoHintRef = useRef("");
   const gpsRef = useRef<UbicacionGpsMoto | null>(null);
   const fetchEnCursoRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
-  const intervaloPollMs = gps
+  const intervaloPollRef = useRef(3000);
+  intervaloPollRef.current = gps
     ? intervaloPollGpsEnVivo(gps.proveedor)
     : 3000;
 
   const refrescarPosicion = useCallback(async () => {
     if (fetchEnCursoRef.current) return;
+    const signal = abortRef.current?.signal;
     fetchEnCursoRef.current = true;
     setActualizando(true);
     try {
@@ -80,19 +122,22 @@ export function GpsMotoPanel({
         params.set("device_id", String(deviceIdRef.current));
       }
       if (imeiRef.current) params.set("imei", imeiRef.current);
-      if (gpsRef.current?.proveedor) {
-        params.set("gps_moto", gpsMotoDesdeProveedor(gpsRef.current.proveedor));
-      }
+      const gpsMotoParam = gpsRef.current
+        ? gpsMotoDesdeProveedor(gpsRef.current.proveedor)
+        : gpsMotoHintRef.current;
+      if (gpsMotoParam) params.set("gps_moto", gpsMotoParam);
 
       const res = await fetch(`/api/gps/live?${params}`, {
         cache: "no-store",
-        signal: abortRef.current?.signal,
+        signal,
       });
       const data = await res.json();
+      if (signal?.aborted) return;
       if (!res.ok) {
         setErrorLive(data.error ?? "No se pudo actualizar el GPS");
         if (!gpsRef.current) {
           setMensajeSinGps(data.error ?? "Error al consultar GPS");
+          setCargando(false);
         }
         return;
       }
@@ -101,38 +146,49 @@ export function GpsMotoPanel({
         deviceIdRef.current = nuevo.deviceId;
         imeiRef.current = nuevo.imei ?? "";
         gpsRef.current = nuevo;
+        guardarHintGps(placa, userId, nuevo);
         setGps(nuevo);
         setRuta((prev) =>
           agregarPuntoRuta(prev, { lat: nuevo.lat, lng: nuevo.lng }),
         );
         setMensajeSinGps(null);
         setErrorLive(null);
+        setCargando(false);
       } else {
         gpsRef.current = null;
         setMensajeSinGps(
           String(data.mensaje ?? "Sin dispositivo GPS para esta placa"),
         );
         setGps(null);
+        setCargando(false);
       }
     } catch (e) {
+      // Abort al cambiar de placa/cliente: no marcar "sin GPS".
       if (e instanceof Error && e.name === "AbortError") return;
       setErrorLive("Sin conexión al actualizar ubicación");
-      if (!gpsRef.current) setMensajeSinGps("Sin conexión al consultar GPS");
+      if (!gpsRef.current) {
+        setMensajeSinGps("Sin conexión al consultar GPS");
+        setCargando(false);
+      }
     } finally {
-      fetchEnCursoRef.current = false;
-      setActualizando(false);
-      setCargando(false);
+      if (!signal?.aborted) {
+        fetchEnCursoRef.current = false;
+        setActualizando(false);
+      }
     }
   }, [placa, userId]);
 
   useEffect(() => {
-    deviceIdRef.current = 0;
-    imeiRef.current = "";
+    const hint = leerHintGps(placa, userId);
+    deviceIdRef.current = hint?.deviceId ?? 0;
+    imeiRef.current = hint?.imei ?? "";
+    gpsMotoHintRef.current = hint?.proveedor ?? "system track";
     gpsRef.current = null;
     setGps(null);
     setRuta([]);
     setCargando(true);
     setMensajeSinGps(null);
+    setErrorLive(null);
   }, [placa, userId]);
 
   useEffect(() => {
@@ -144,20 +200,26 @@ export function GpsMotoPanel({
       return;
     }
 
+    let cancelado = false;
+    let timeoutId = 0;
     abortRef.current = new AbortController();
-    void refrescarPosicion();
-    const id = window.setInterval(
-      () => void refrescarPosicion(),
-      intervaloPollMs,
-    );
+
+    const tick = async () => {
+      await refrescarPosicion();
+      if (cancelado) return;
+      timeoutId = window.setTimeout(tick, intervaloPollRef.current);
+    };
+    void tick();
 
     return () => {
-      window.clearInterval(id);
+      cancelado = true;
+      window.clearTimeout(timeoutId);
       abortRef.current?.abort();
       abortRef.current = null;
       fetchEnCursoRef.current = false;
+      setActualizando(false);
     };
-  }, [enVivo, refrescarPosicion, intervaloPollMs]);
+  }, [enVivo, refrescarPosicion]);
 
   const enviarComando = useCallback(
     async (accion: "bloquear" | "desbloquear") => {

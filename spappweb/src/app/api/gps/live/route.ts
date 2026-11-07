@@ -10,11 +10,15 @@ import {
   mensajeGpsNoDisponible,
 } from "@/lib/gps/gpsMoto";
 import { placaPerteneceAlCliente } from "@/lib/gps/placaDelCliente";
+import { precalentarSystemTrack } from "@/lib/gps/systemTrackGps";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
+    // Calienta caché en paralelo con auth/DB (latest ~1s o disco instantáneo).
+    precalentarSystemTrack();
+
     const response = NextResponse.json({ ok: false });
     const session = await getIronSession<SessionData>(
       request,
@@ -43,24 +47,30 @@ export async function GET(request: NextRequest) {
         { status: 400 },
       );
     }
-    if (!(await placaPerteneceAlCliente(userId, placa))) {
-      return NextResponse.json(
-        { error: "La placa no pertenece a este cliente" },
-        { status: 403 },
-      );
-    }
 
     const deviceIdRaw = searchParams.get("device_id");
     const deviceId = deviceIdRaw ? Number(deviceIdRaw) : undefined;
     const imei = searchParams.get("imei")?.trim() || undefined;
     const gpsMoto = searchParams.get("gps_moto");
+    const deviceIdOk =
+      Number.isFinite(deviceId) && deviceId! > 0 ? deviceId : undefined;
 
-    const resultado = await buscarUbicacionGpsEnVivo(placa, {
-      gpsMoto,
-      deviceId:
-        Number.isFinite(deviceId) && deviceId! > 0 ? deviceId : undefined,
-      imei,
-    });
+    // Placa + GPS en paralelo (admin ya autenticado).
+    const [pertenece, resultado] = await Promise.all([
+      placaPerteneceAlCliente(userId, placa),
+      buscarUbicacionGpsEnVivo(placa, {
+        gpsMoto,
+        deviceId: deviceIdOk,
+        imei,
+      }),
+    ]);
+
+    if (!pertenece) {
+      return NextResponse.json(
+        { error: "La placa no pertenece a este cliente" },
+        { status: 403 },
+      );
+    }
 
     if (!resultado.ok) {
       return NextResponse.json({

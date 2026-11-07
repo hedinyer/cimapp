@@ -1,5 +1,9 @@
 import "server-only";
 
+import { readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import {
   extraerPlacasDeTexto,
   normalizarPlaca,
@@ -14,14 +18,28 @@ export type { AccionMotorGps, UbicacionGpsMoto };
 export { etiquetaEstadoGps } from "@/lib/gps/ubicacionGps";
 
 const SYSTEMTRACK_BASE_URL = "https://plataforma.sistemagps.online";
-const SYSTEMTRACK_EMAIL = "";
-const SYSTEMTRACK_PASSWORD = "";
-const SYSTEMTRACK_USER_API_HASH_FALLBACK = "";
+const SYSTEMTRACK_EMAIL = "marisolpinilla@hotmail.com";
+const SYSTEMTRACK_PASSWORD = "098765";
+/** Hash estable de la cuenta; evita esperar login en el primer poll. */
+const SYSTEMTRACK_USER_API_HASH_FALLBACK =
+  "$2y$10$WI01IqH.ZfscywOjwOcb3.hWsLw0WbYrctIsJ2Fca8Qb5uTaJbCM6";
 
-const CACHE_TTL_MS = 45_000;
-/** Sin caché en vivo: cada poll pide datos frescos a GPSWOX. */
-const CACHE_TTL_EN_VIVO_MS = 0;
+/** Fresco: no dispara red. */
+const CACHE_FRESH_MS = 3_000;
+/** Stale usable: responde YA y refresca en background (latest ~1s). */
+const CACHE_STALE_MAX_MS = 30 * 60_000;
+/** Catálogo completo (get_devices ~10s) como máximo cada N ms. */
+const FULL_REFRESH_MIN_MS = 10 * 60_000;
 const AUTH_TTL_MS = 25 * 60_000;
+
+const DISK_CACHE_PATH = join(tmpdir(), "cimapp-systemtrack-gps.json");
+
+export function systemTrackConfigurado(): boolean {
+  return Boolean(
+    SYSTEMTRACK_EMAIL.trim() &&
+      (SYSTEMTRACK_PASSWORD.trim() || SYSTEMTRACK_USER_API_HASH_FALLBACK.trim()),
+  );
+}
 
 type GpsSensor = {
   tag_name?: string;
@@ -58,16 +76,34 @@ type SendCommandResponse = {
   error?: string;
 };
 
-let cacheDispositivos: {
+type IndiceGps = {
   fetchedAt: number;
+  fullFetchedAt: number;
   porPlaca: Map<string, UbicacionGpsMoto>;
   porDeviceId: Map<number, UbicacionGpsMoto>;
-} | null = null;
-let cacheAuth: { hash: string; fetchedAt: number } | null = null;
+};
+
+type DiskCache = {
+  fetchedAt: number;
+  fullFetchedAt: number;
+  byId: Record<string, UbicacionGpsMoto>;
+  plates: Record<string, number>;
+};
+
+let cacheDispositivos: IndiceGps | null = null;
+let cacheAuth: { hash: string; fetchedAt: number } | null =
+  SYSTEMTRACK_USER_API_HASH_FALLBACK
+    ? { hash: SYSTEMTRACK_USER_API_HASH_FALLBACK, fetchedAt: Date.now() }
+    : null;
+let diskHydrated = false;
+let latestEnCurso: Promise<void> | null = null;
+let fullEnCurso: Promise<void> | null = null;
 
 function clavesPlacaDispositivo(item: GpsDeviceItem): string[] {
   const claves = new Set<string>();
-  for (const placa of extraerPlacasDeTexto(String(item.device_data?.plate_number ?? ""))) {
+  for (const placa of extraerPlacasDeTexto(
+    String(item.device_data?.plate_number ?? ""),
+  )) {
     claves.add(placa);
   }
   for (const placa of extraerPlacasDeTexto(String(item.name ?? ""))) {
@@ -102,7 +138,8 @@ function preferirDispositivo(
   actual: UbicacionGpsMoto,
   candidato: UbicacionGpsMoto,
 ): UbicacionGpsMoto {
-  const diff = prioridadConexion(candidato.online) - prioridadConexion(actual.online);
+  const diff =
+    prioridadConexion(candidato.online) - prioridadConexion(actual.online);
   if (diff !== 0) return diff > 0 ? candidato : actual;
   return candidato.time >= actual.time ? candidato : actual;
 }
@@ -133,6 +170,103 @@ function mapearDispositivo(item: GpsDeviceItem): UbicacionGpsMoto | null {
 
 function invalidarCachesDispositivos(): void {
   cacheDispositivos = null;
+}
+
+function hydrateFromDisk(): void {
+  if (diskHydrated) return;
+  diskHydrated = true;
+  if (cacheDispositivos) return;
+  try {
+    const raw = readFileSync(DISK_CACHE_PATH, "utf8");
+    const data = JSON.parse(raw) as DiskCache;
+    if (!data?.byId || !data?.plates) return;
+
+    const porDeviceId = new Map<number, UbicacionGpsMoto>();
+    const porPlaca = new Map<string, UbicacionGpsMoto>();
+    for (const [id, gps] of Object.entries(data.byId)) {
+      const deviceId = Number(id);
+      if (!Number.isFinite(deviceId) || !gps) continue;
+      porDeviceId.set(deviceId, { ...gps, proveedor: "system_track" });
+    }
+    for (const [placa, id] of Object.entries(data.plates)) {
+      const gps = porDeviceId.get(Number(id));
+      if (gps) porPlaca.set(placa, gps);
+    }
+    if (porDeviceId.size === 0) return;
+    cacheDispositivos = {
+      fetchedAt: Number(data.fetchedAt) || 0,
+      fullFetchedAt: Number(data.fullFetchedAt) || Number(data.fetchedAt) || 0,
+      porPlaca,
+      porDeviceId,
+    };
+  } catch {
+    /* sin caché en disco */
+  }
+}
+
+function persistToDisk(): void {
+  if (!cacheDispositivos) return;
+  const byId: Record<string, UbicacionGpsMoto> = {};
+  const plates: Record<string, number> = {};
+  for (const [id, gps] of cacheDispositivos.porDeviceId) {
+    byId[String(id)] = gps;
+  }
+  for (const [placa, gps] of cacheDispositivos.porPlaca) {
+    plates[placa] = gps.deviceId;
+  }
+  const payload: DiskCache = {
+    fetchedAt: cacheDispositivos.fetchedAt,
+    fullFetchedAt: cacheDispositivos.fullFetchedAt,
+    byId,
+    plates,
+  };
+  try {
+    writeFileSync(DISK_CACHE_PATH, JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+}
+
+function asegurarIndiceVacio(): IndiceGps {
+  if (!cacheDispositivos) {
+    cacheDispositivos = {
+      fetchedAt: 0,
+      fullFetchedAt: 0,
+      porPlaca: new Map(),
+      porDeviceId: new Map(),
+    };
+  }
+  return cacheDispositivos;
+}
+
+function fusionarGrupos(data: GpsDeviceGroup[], esFull: boolean): void {
+  const indice = asegurarIndiceVacio();
+  const ahora = Date.now();
+
+  for (const grupo of data) {
+    for (const item of grupo.items ?? []) {
+      const dispositivo = mapearDispositivo(item);
+      if (!dispositivo) continue;
+
+      const prevId = indice.porDeviceId.get(dispositivo.deviceId);
+      indice.porDeviceId.set(
+        dispositivo.deviceId,
+        prevId ? preferirDispositivo(prevId, dispositivo) : dispositivo,
+      );
+
+      for (const clave of clavesPlacaDispositivo(item)) {
+        const existente = indice.porPlaca.get(clave);
+        const elegido = existente
+          ? preferirDispositivo(existente, dispositivo)
+          : dispositivo;
+        indice.porPlaca.set(clave, elegido);
+      }
+    }
+  }
+
+  indice.fetchedAt = ahora;
+  if (esFull) indice.fullFetchedAt = ahora;
+  persistToDisk();
 }
 
 async function obtenerUserApiHash(force = false): Promise<string> {
@@ -194,7 +328,7 @@ async function fetchDispositivos(apiHash: string): Promise<GpsDeviceGroup[]> {
   return data;
 }
 
-/** Posiciones recientes (GPSWOX); misma forma que get_devices. */
+/** Posiciones recientes: ~1s / 250KB vs get_devices ~10s / 7MB. */
 async function fetchDispositivosLatest(
   apiHash: string,
 ): Promise<GpsDeviceGroup[] | null> {
@@ -203,7 +337,7 @@ async function fetchDispositivosLatest(
 
   const res = await fetch(url.toString(), {
     cache: "no-store",
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(12_000),
   });
   if (!res.ok) return null;
 
@@ -213,105 +347,94 @@ async function fetchDispositivosLatest(
   return total > 0 ? data : null;
 }
 
-function indexarDispositivos(data: GpsDeviceGroup[]): {
-  porPlaca: Map<string, UbicacionGpsMoto>;
-  porDeviceId: Map<number, UbicacionGpsMoto>;
-} {
-  const porPlaca = new Map<string, UbicacionGpsMoto>();
-  const porDeviceId = new Map<number, UbicacionGpsMoto>();
-
-  for (const grupo of data) {
-    for (const item of grupo.items ?? []) {
-      const dispositivo = mapearDispositivo(item);
-      if (!dispositivo) continue;
-
-      const prevId = porDeviceId.get(dispositivo.deviceId);
-      porDeviceId.set(
-        dispositivo.deviceId,
-        prevId ? preferirDispositivo(prevId, dispositivo) : dispositivo,
+async function refrescarLatest(): Promise<void> {
+  if (latestEnCurso) return latestEnCurso;
+  latestEnCurso = (async () => {
+    const apiHash = await obtenerUserApiHash();
+    const data = await fetchDispositivosLatest(apiHash);
+    if (data) fusionarGrupos(data, false);
+  })()
+    .catch((e) => {
+      console.warn(
+        "[systemTrackGps] latest:",
+        e instanceof Error ? e.message : e,
       );
-
-      for (const clave of clavesPlacaDispositivo(item)) {
-        const existente = porPlaca.get(clave);
-        porPlaca.set(
-          clave,
-          existente
-            ? preferirDispositivo(existente, dispositivo)
-            : dispositivo,
-        );
-      }
-    }
-  }
-
-  return { porPlaca, porDeviceId };
+    })
+    .finally(() => {
+      latestEnCurso = null;
+    });
+  return latestEnCurso;
 }
 
-type OpcionesCargaGps = {
-  /** TTL corto para seguimiento en vivo (polling). */
-  enVivo?: boolean;
-};
-
-async function cargarDispositivos(
-  opciones?: OpcionesCargaGps,
-): Promise<{
-  porPlaca: Map<string, UbicacionGpsMoto>;
-  porDeviceId: Map<number, UbicacionGpsMoto>;
-}> {
+async function refrescarFull(force = false): Promise<void> {
+  hydrateFromDisk();
   const ahora = Date.now();
-  const ttl = opciones?.enVivo ? CACHE_TTL_EN_VIVO_MS : CACHE_TTL_MS;
-
-  if (cacheDispositivos && ahora - cacheDispositivos.fetchedAt < ttl) {
-    return {
-      porPlaca: cacheDispositivos.porPlaca,
-      porDeviceId: cacheDispositivos.porDeviceId,
-    };
+  if (
+    !force &&
+    cacheDispositivos &&
+    ahora - cacheDispositivos.fullFetchedAt < FULL_REFRESH_MIN_MS
+  ) {
+    return;
   }
-
-  let apiHash = await obtenerUserApiHash();
-  let data =
-    opciones?.enVivo ? await fetchDispositivosLatest(apiHash) : null;
-  if (!data) {
-    data = await fetchDispositivos(apiHash);
-  }
-
-  const totalItems = data.reduce((n, g) => n + (g.items?.length ?? 0), 0);
-  if (totalItems <= 10) {
-    invalidarCachesDispositivos();
-    apiHash = await obtenerUserApiHash(true);
-    data = await fetchDispositivos(apiHash);
-  }
-
-  const { porPlaca, porDeviceId } = indexarDispositivos(data);
-  cacheDispositivos = { fetchedAt: ahora, porPlaca, porDeviceId };
-  return { porPlaca, porDeviceId };
+  if (fullEnCurso) return fullEnCurso;
+  fullEnCurso = (async () => {
+    let apiHash = await obtenerUserApiHash();
+    let data = await fetchDispositivos(apiHash);
+    const total = data.reduce((n, g) => n + (g.items?.length ?? 0), 0);
+    if (total <= 10) {
+      apiHash = await obtenerUserApiHash(true);
+      data = await fetchDispositivos(apiHash);
+    }
+    fusionarGrupos(data, true);
+  })()
+    .catch((e) => {
+      console.warn(
+        "[systemTrackGps] full:",
+        e instanceof Error ? e.message : e,
+      );
+    })
+    .finally(() => {
+      fullEnCurso = null;
+    });
+  return fullEnCurso;
 }
 
-async function buscarDispositivoPorPlaca(
-  placa: string,
-  opciones?: OpcionesCargaGps,
-): Promise<UbicacionGpsMoto | null> {
+function peekPorPlaca(placa: string): UbicacionGpsMoto | null {
   const exacta = normalizarPlaca(placa);
-  if (!exacta) return null;
-
-  const { porPlaca } = await cargarDispositivos(opciones);
-  const hitExacto = porPlaca.get(exacta);
-  if (hitExacto) return hitExacto;
-  // Solo fallback H histórico (ABC12 ↔ ABC12H); nunca otra letra final.
+  if (!exacta || !cacheDispositivos) return null;
+  const hit = cacheDispositivos.porPlaca.get(exacta);
+  if (hit) return hit;
   for (const clave of variantesPlaca(placa)) {
     if (clave === exacta) continue;
-    const dispositivo = porPlaca.get(clave);
+    const dispositivo = cacheDispositivos.porPlaca.get(clave);
     if (dispositivo) return dispositivo;
   }
   return null;
 }
 
-async function buscarDispositivoPorId(
-  deviceId: number,
-  opciones?: OpcionesCargaGps,
-): Promise<UbicacionGpsMoto | null> {
-  if (!Number.isFinite(deviceId) || deviceId <= 0) return null;
-  const { porDeviceId } = await cargarDispositivos(opciones);
-  return porDeviceId.get(deviceId) ?? null;
+function peekPorId(deviceId: number): UbicacionGpsMoto | null {
+  if (!Number.isFinite(deviceId) || deviceId <= 0 || !cacheDispositivos) {
+    return null;
+  }
+  return cacheDispositivos.porDeviceId.get(deviceId) ?? null;
+}
+
+function edadCacheMs(): number {
+  if (!cacheDispositivos?.fetchedAt) return Number.POSITIVE_INFINITY;
+  return Date.now() - cacheDispositivos.fetchedAt;
+}
+
+/**
+ * Arranca la caché en caliente (disco + latest) sin bloquear la UI.
+ * Llamar al boot del server y al entrar al endpoint GPS.
+ */
+export function precalentarSystemTrack(): void {
+  if (!systemTrackConfigurado()) return;
+  hydrateFromDisk();
+  void refrescarLatest();
+  if (!cacheDispositivos || cacheDispositivos.porDeviceId.size < 50) {
+    void refrescarFull(true);
+  }
 }
 
 export type ResultadoBusquedaGps =
@@ -321,17 +444,53 @@ export type ResultadoBusquedaGps =
 export async function mapaDispositivosPorPlaca(): Promise<
   Map<string, UbicacionGpsMoto>
 > {
-  const { porPlaca } = await cargarDispositivos();
-  return porPlaca;
+  hydrateFromDisk();
+  if (!cacheDispositivos || edadCacheMs() > CACHE_STALE_MAX_MS) {
+    await refrescarLatest();
+    if (!cacheDispositivos || cacheDispositivos.porPlaca.size < 20) {
+      await refrescarFull(true);
+    }
+  } else if (edadCacheMs() > CACHE_FRESH_MS) {
+    void refrescarLatest();
+  }
+  return cacheDispositivos?.porPlaca ?? new Map();
+}
+
+async function buscarConCache(
+  placa: string,
+  deviceId?: number,
+): Promise<ResultadoBusquedaGps> {
+  hydrateFromDisk();
+
+  const hitInicial =
+    (deviceId ? peekPorId(deviceId) : null) ?? peekPorPlaca(placa);
+  const age = edadCacheMs();
+
+  if (hitInicial && age <= CACHE_STALE_MAX_MS) {
+    if (age > CACHE_FRESH_MS) void refrescarLatest();
+    return { ok: true, gps: hitInicial };
+  }
+
+  // Sin hit usable: latest (~1s) antes que el catálogo completo (~10s).
+  await refrescarLatest();
+  const hitLatest =
+    (deviceId ? peekPorId(deviceId) : null) ?? peekPorPlaca(placa);
+  if (hitLatest) return { ok: true, gps: hitLatest };
+
+  await refrescarFull(true);
+  const hitFull =
+    (deviceId ? peekPorId(deviceId) : null) ?? peekPorPlaca(placa);
+  if (hitFull) return { ok: true, gps: hitFull };
+
+  return { ok: false, motivo: "sin_dispositivo" };
 }
 
 export async function buscarUbicacionGps(
   placa: string,
 ): Promise<ResultadoBusquedaGps> {
+  if (!systemTrackConfigurado()) return { ok: false, motivo: "sin_dispositivo" };
   try {
-    const dispositivo = await buscarDispositivoPorPlaca(placa);
-    if (dispositivo) return { ok: true, gps: dispositivo };
-    return { ok: false, motivo: "sin_dispositivo" };
+    return await buscarConCache(placa);
   } catch (e) {
     console.warn("[systemTrackGps]", e instanceof Error ? e.message : e);
     invalidarCachesDispositivos();
@@ -340,23 +499,19 @@ export async function buscarUbicacionGps(
   }
 }
 
-/** Actualización frecuente para mapa en vivo (GPSWOX get_devices_latest / get_devices). */
+/** Actualización frecuente para mapa en vivo. */
 export async function buscarUbicacionGpsEnVivo(
   placa: string,
   deviceId?: number,
 ): Promise<ResultadoBusquedaGps> {
+  if (!systemTrackConfigurado()) return { ok: false, motivo: "sin_dispositivo" };
   try {
-    const opciones = { enVivo: true as const };
-    if (deviceId) {
-      const porId = await buscarDispositivoPorId(deviceId, opciones);
-      if (porId) return { ok: true, gps: porId };
-    }
-    const dispositivo = await buscarDispositivoPorPlaca(placa, opciones);
-    if (dispositivo) return { ok: true, gps: dispositivo };
-    return { ok: false, motivo: "sin_dispositivo" };
+    return await buscarConCache(placa, deviceId);
   } catch (e) {
-    console.warn("[systemTrackGps] en vivo:", e instanceof Error ? e.message : e);
-    invalidarCachesDispositivos();
+    console.warn(
+      "[systemTrackGps] en vivo:",
+      e instanceof Error ? e.message : e,
+    );
     return { ok: false, motivo: "error_proveedor" };
   }
 }
@@ -370,9 +525,12 @@ export async function enviarComandoMotor(
   accion: AccionMotorGps,
 ): Promise<ResultadoComandoMotor> {
   try {
-    const dispositivo = await buscarDispositivoPorPlaca(placa);
-    if (!dispositivo) {
-      return { ok: false, error: "No se encontró el dispositivo GPS de esa placa." };
+    const resultado = await buscarConCache(placa);
+    if (!resultado.ok) {
+      return {
+        ok: false,
+        error: "No se encontró el dispositivo GPS de esa placa.",
+      };
     }
 
     const type = accion === "bloquear" ? "engineStop" : "engineResume";
@@ -383,7 +541,7 @@ export async function enviarComandoMotor(
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
         user_api_hash: apiHash,
-        device_id: dispositivo.deviceId,
+        device_id: resultado.gps.deviceId,
         type,
       }),
       cache: "no-store",
@@ -392,7 +550,7 @@ export async function enviarComandoMotor(
 
     const data = (await res.json()) as SendCommandResponse;
     if (data.status === 1) {
-      invalidarCachesDispositivos();
+      void refrescarLatest();
       return {
         ok: true,
         mensaje:
@@ -411,7 +569,10 @@ export async function enviarComandoMotor(
         "System Track no pudo enviar el comando.",
     };
   } catch (e) {
-    console.warn("[systemTrackGps] comando:", e instanceof Error ? e.message : e);
+    console.warn(
+      "[systemTrackGps] comando:",
+      e instanceof Error ? e.message : e,
+    );
     return {
       ok: false,
       error: "No se pudo contactar System Track. Intenta de nuevo.",
@@ -439,4 +600,9 @@ export function enlaceMapaEmbebido(gps: UbicacionGpsMoto): string {
     gps.lat + delta,
   ].join(",");
   return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${gps.lat}%2C${gps.lng}`;
+}
+
+// Precalienta al cargar el módulo del server (dev/prod node).
+if (systemTrackConfigurado()) {
+  precalentarSystemTrack();
 }

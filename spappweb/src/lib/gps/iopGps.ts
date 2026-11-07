@@ -36,8 +36,12 @@ const CUENTAS_IOP: CuentaIop[] = [
 ];
 
 const CACHE_TTL_MS = 45_000;
-const CACHE_TTL_EN_VIVO_MS = 0;
+const CACHE_TTL_EN_VIVO_MS = 2_000;
 const AUTH_TTL_MS = 90 * 60_000;
+
+export function iopGpsConfigurado(): boolean {
+  return CUENTAS_IOP.some((c) => c.appid.trim() && c.secretKey.trim());
+}
 
 type AuthResponse = {
   code?: number;
@@ -407,6 +411,7 @@ export async function mapaDispositivosPorPlacaIop(): Promise<
 export async function buscarUbicacionGpsIop(
   placa: string,
 ): Promise<ResultadoBusquedaGps> {
+  if (!iopGpsConfigurado()) return { ok: false, motivo: "sin_dispositivo" };
   try {
     const dispositivo = await buscarPorPlaca(placa);
     if (dispositivo) return { ok: true, gps: dispositivo };
@@ -423,6 +428,7 @@ export async function buscarUbicacionGpsIopEnVivo(
   deviceId?: number,
   imei?: string,
 ): Promise<ResultadoBusquedaGps> {
+  if (!iopGpsConfigurado()) return { ok: false, motivo: "sin_dispositivo" };
   try {
     const opciones = { enVivo: true as const };
     if (imei?.trim()) {

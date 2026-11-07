@@ -22,6 +22,10 @@ const DSTRACK_BASIC = Buffer.from(
 const CACHE_TTL_MS = 45_000;
 const NUDOS_A_KMH = 1.852;
 
+export function dsTrackConfigurado(): boolean {
+  return Boolean(DSTRACK_USER.trim() && DSTRACK_PASSWORD.trim());
+}
+
 type DsDevice = {
   id?: number;
   name?: string;
@@ -247,6 +251,7 @@ export type ResultadoBusquedaGps =
 export async function buscarUbicacionGpsDs(
   placa: string,
 ): Promise<ResultadoBusquedaGps> {
+  if (!dsTrackConfigurado()) return { ok: false, motivo: "sin_dispositivo" };
   try {
     const index = await buscarIndexPorPlaca(placa);
     if (!index) return { ok: false, motivo: "sin_dispositivo" };
@@ -265,6 +270,7 @@ export async function buscarUbicacionGpsDsEnVivo(
   deviceId?: number,
   imei?: string,
 ): Promise<ResultadoBusquedaGps> {
+  if (!dsTrackConfigurado()) return { ok: false, motivo: "sin_dispositivo" };
   try {
     if (deviceId && deviceId > 0) {
       const device = await fetchDispositivo(deviceId);

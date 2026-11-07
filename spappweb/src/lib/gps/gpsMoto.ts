@@ -6,10 +6,12 @@ import {
   enviarComandoMotor as comandoSt,
   enlaceMapaEmbebido,
   mensajeGpsNoDisponible as mensajeSt,
+  systemTrackConfigurado,
 } from "@/lib/gps/systemTrackGps";
 import {
   buscarUbicacionGpsDs,
   buscarUbicacionGpsDsEnVivo,
+  dsTrackConfigurado,
   enviarComandoMotorDs,
   mensajeGpsDsNoDisponible,
 } from "@/lib/gps/dsTrackGps";
@@ -17,6 +19,7 @@ import {
   buscarUbicacionGpsIop,
   buscarUbicacionGpsIopEnVivo,
   enviarComandoMotorIop,
+  iopGpsConfigurado,
   mensajeGpsIopNoDisponible,
 } from "@/lib/gps/iopGps";
 import {
@@ -47,10 +50,25 @@ export type ResultadoComandoMotor =
   | { ok: true; mensaje: string }
   | { ok: false; error: string };
 
-const PROVEEDORES: ProveedorGps[] = ["iopgps", "dstrack", "system_track"];
+/** System Track primero: es el proveedor activo hoy. */
+const PROVEEDORES: ProveedorGps[] = ["system_track", "iopgps", "dstrack"];
 
 function gpsMotoExplicito(gpsMoto?: string | null): boolean {
   return String(gpsMoto ?? "").trim().length > 0;
+}
+
+function proveedorConfigurado(proveedor: ProveedorGps): boolean {
+  if (proveedor === "system_track") return systemTrackConfigurado();
+  if (proveedor === "iopgps") return iopGpsConfigurado();
+  return dsTrackConfigurado();
+}
+
+function proveedoresActivos(gpsMoto?: string | null): ProveedorGps[] {
+  if (gpsMotoExplicito(gpsMoto)) {
+    const p = resolverProveedorGps(gpsMoto);
+    return proveedorConfigurado(p) ? [p] : [];
+  }
+  return PROVEEDORES.filter(proveedorConfigurado);
 }
 
 function elegirMejorBusqueda(
@@ -92,6 +110,43 @@ function buscarEnProveedor(
     : buscarSt(placa);
 }
 
+/**
+ * Devuelve el primer hit OK sin esperar al resto.
+ * Si nadie encuentra, espera a todos y elige el mejor motivo de fallo.
+ */
+async function buscarRapido(
+  proveedores: ProveedorGps[],
+  placa: string,
+  opciones?: { enVivo?: boolean; deviceId?: number; imei?: string },
+): Promise<ResultadoBusquedaGps> {
+  if (proveedores.length === 0) {
+    return { ok: false, motivo: "sin_dispositivo" };
+  }
+  if (proveedores.length === 1) {
+    return buscarEnProveedor(proveedores[0], placa, opciones);
+  }
+
+  return new Promise((resolve) => {
+    let pendientes = proveedores.length;
+    const fallos: ResultadoBusquedaGps[] = [];
+    let cerrado = false;
+
+    for (const proveedor of proveedores) {
+      void buscarEnProveedor(proveedor, placa, opciones).then((resultado) => {
+        if (cerrado) return;
+        if (resultado.ok) {
+          cerrado = true;
+          resolve(resultado);
+          return;
+        }
+        fallos.push(resultado);
+        pendientes -= 1;
+        if (pendientes === 0) resolve(elegirMejorBusqueda(fallos));
+      });
+    }
+  });
+}
+
 function comandoEnProveedor(
   proveedor: ProveedorGps,
   placa: string,
@@ -106,14 +161,7 @@ export async function buscarUbicacionGps(
   placa: string,
   gpsMoto?: string | null,
 ): Promise<ResultadoBusquedaGps> {
-  if (gpsMotoExplicito(gpsMoto)) {
-    return buscarEnProveedor(resolverProveedorGps(gpsMoto), placa);
-  }
-
-  const resultados = await Promise.all(
-    PROVEEDORES.map((proveedor) => buscarEnProveedor(proveedor, placa)),
-  );
-  return elegirMejorBusqueda(resultados);
+  return buscarRapido(proveedoresActivos(gpsMoto), placa);
 }
 
 export async function buscarUbicacionGpsEnVivo(
@@ -129,14 +177,7 @@ export async function buscarUbicacionGpsEnVivo(
     deviceId: opciones?.deviceId,
     imei: opciones?.imei,
   };
-  if (gpsMotoExplicito(opciones?.gpsMoto)) {
-    return buscarEnProveedor(resolverProveedorGps(opciones?.gpsMoto), placa, live);
-  }
-
-  const resultados = await Promise.all(
-    PROVEEDORES.map((proveedor) => buscarEnProveedor(proveedor, placa, live)),
-  );
-  return elegirMejorBusqueda(resultados);
+  return buscarRapido(proveedoresActivos(opciones?.gpsMoto), placa, live);
 }
 
 export async function enviarComandoMotor(
