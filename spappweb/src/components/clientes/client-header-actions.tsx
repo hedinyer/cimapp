@@ -163,7 +163,7 @@ export function ClientHeaderActions({ pipeline }: { pipeline: ClientPipeline }) 
             action: {
               label: "Ir a Garaje",
               onClick: () => {
-                window.location.href = "/garaje?fotoPendiente=1";
+                router.push("/garaje?fotoPendiente=1");
               },
             },
           },

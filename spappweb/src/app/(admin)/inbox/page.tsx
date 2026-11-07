@@ -1,6 +1,6 @@
 ﻿import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { getAllBikes, getInboxListItems, getInboxQueues } from "@/lib/pipeline/queries";
+import { getInboxListItems, getInboxQueues } from "@/lib/pipeline/queries";
 import { InboxQueueList } from "@/components/inbox/inbox-queue-list";
 import { InboxQueuesLive } from "@/components/inbox/inbox-queues-live";
 import { queueTitle } from "@/components/inbox/queue-cards";
@@ -33,14 +33,14 @@ export default async function InboxPage({
 }) {
   const params = await searchParams;
   const queueId = parseQueue(params.cola);
-  const [queues, bikes, items] = await Promise.all([
+  // No cargar catálogo de motos en el overview: solo al abrir "Vender moto".
+  const [queues, items] = await Promise.all([
     getInboxQueues(),
-    getAllBikes(),
     queueId ? getInboxListItems(queueId) : Promise.resolve([]),
   ]);
 
   if (!queueId) {
-    return <InboxQueuesLive initialQueues={queues} bikes={bikes} />;
+    return <InboxQueuesLive initialQueues={queues} bikes={[]} />;
   }
 
   return (

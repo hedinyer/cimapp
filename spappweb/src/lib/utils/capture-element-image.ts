@@ -1,5 +1,3 @@
-import html2canvas from "html2canvas-pro";
-
 const COLOR_PROPS = [
   "color",
   "backgroundColor",
@@ -42,6 +40,7 @@ export async function captureElementAsPng(
     hideSelector?: string;
   },
 ): Promise<Blob> {
+  const html2canvas = (await import("html2canvas-pro")).default;
   const canvas = await html2canvas(element, {
     backgroundColor: "#ffffff",
     scale: 2,

@@ -21,8 +21,10 @@ const nextConfig: NextConfig = {
     : {}),
   ...(allowedDevOrigins.length > 0 ? { allowedDevOrigins } : {}),
   reactCompiler: true,
-  serverExternalPackages: ["sharp", "unpdf", "xlsx"],
+  serverExternalPackages: ["sharp", "unpdf", "xlsx", "tesseract.js"],
+  // Tree-shake imports pesados (lucide, date-fns) en el client bundle.
   experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns"],
     serverActions: {
       // Fotos de cámara móvil pueden superar 1 MB (límite por defecto de Next.js)
       bodySizeLimit: "15mb",

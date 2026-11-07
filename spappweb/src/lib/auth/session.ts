@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getIronSession, SessionOptions } from "iron-session";
 import { cookies, headers } from "next/headers";
 import { isAdminStatus, type UserStatus } from "@/lib/auth/user-status";
@@ -26,9 +27,10 @@ export const sessionOptions: SessionOptions = {
   },
 };
 
-export async function getSession() {
+/** Una sola lectura de cookie por request RSC (layout + páginas). */
+export const getSession = cache(async () => {
   return getIronSession<SessionData>(await cookies(), sessionOptions);
-}
+});
 
 export function hasAdminAccess(session: SessionData): boolean {
   return (

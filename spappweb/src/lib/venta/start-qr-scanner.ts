@@ -1,4 +1,7 @@
 import QrScanner from "qr-scanner";
+import { isIOS } from "@/lib/utils/device";
+
+export { isIOS, isMobileTouchDevice } from "@/lib/utils/device";
 
 export type QrScannerStop = () => void;
 
@@ -20,22 +23,6 @@ function isCoarsePointer(): boolean {
   return (
     typeof window !== "undefined" &&
     window.matchMedia("(pointer: coarse)").matches
-  );
-}
-
-export function isIOS(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
-}
-
-export function isMobileTouchDevice(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(pointer: coarse)").matches ||
-    window.matchMedia("(max-width: 639px)").matches
   );
 }
 

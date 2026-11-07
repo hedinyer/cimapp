@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { LogOut, PanelLeft, PanelLeftClose } from "lucide-react";
 import { logoutAdminAction } from "@/lib/actions/auth-actions";
@@ -33,6 +33,7 @@ export function AdminSidebar({
   referralScope?: string | null;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [loggingOut, startLogout] = useTransition();
   const [collapsed, setCollapsed] = useState(false);
   const navGroups = navGroupsForMenu(hideEquipo);
@@ -40,6 +41,16 @@ export function AdminSidebar({
   useEffect(() => {
     setCollapsed(localStorage.getItem(STORAGE_KEY) === "true");
   }, []);
+
+  // Prefetch rutas del menú para navegación casi instantánea.
+  useEffect(() => {
+    const hrefs = new Set<string>();
+    for (const group of navGroupsForMenu(hideEquipo)) {
+      hrefs.add(group.href);
+      for (const child of group.children) hrefs.add(child.href);
+    }
+    for (const href of hrefs) router.prefetch(href);
+  }, [hideEquipo, router]);
 
   function toggleCollapsed() {
     setCollapsed((prev) => {

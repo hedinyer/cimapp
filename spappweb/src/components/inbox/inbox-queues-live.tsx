@@ -3,16 +3,32 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bike, ShoppingBag, Store } from "lucide-react";
-import { refreshInboxQueues } from "@/lib/actions/inbox-actions";
+import {
+  loadCatalogoMotosInbox,
+  refreshInboxQueues,
+} from "@/lib/actions/inbox-actions";
 import { createAnonClient } from "@/lib/supabase/anon";
 import type { BikeRow, InboxQueue } from "@/lib/pipeline/types";
+import { toast } from "sonner";
 import { QueueCards } from "@/components/inbox/queue-cards";
-import { VenderMotoSheet } from "@/components/inbox/vender-moto-sheet";
-import { VenderProductosSheet } from "@/components/inbox/vender-productos-sheet";
 import { BrandLogos } from "@/components/brand/brand-logos";
 import { PageHeader } from "@/components/layout/page-header";
-import { isMobileTouchDevice } from "@/lib/venta/start-qr-scanner";
+import { isMobileTouchDevice } from "@/lib/utils/device";
 import { Button } from "@/components/ui/button";
+import dynamic from "next/dynamic";
+
+const VenderMotoSheet = dynamic(
+  () =>
+    import("@/components/inbox/vender-moto-sheet").then((m) => m.VenderMotoSheet),
+  { ssr: false },
+);
+const VenderProductosSheet = dynamic(
+  () =>
+    import("@/components/inbox/vender-productos-sheet").then(
+      (m) => m.VenderProductosSheet,
+    ),
+  { ssr: false },
+);
 
 const INBOX_REALTIME_TABLES = [
   "users_documents",
@@ -35,10 +51,25 @@ function pendingSummary(total: number) {
 
 export function InboxQueuesLive({ initialQueues, bikes }: InboxQueuesLiveProps) {
   const [queues, setQueues] = useState(initialQueues);
+  const [catalogoBikes, setCatalogoBikes] = useState(bikes);
   const [venderOpen, setVenderOpen] = useState(false);
   const [productosOpen, setProductosOpen] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshingRef = useRef(false);
+  const bikesLoadingRef = useRef(false);
+
+  async function openVenderMoto() {
+    setVenderOpen(true);
+    if (catalogoBikes.length > 0 || bikesLoadingRef.current) return;
+    bikesLoadingRef.current = true;
+    try {
+      setCatalogoBikes(await loadCatalogoMotosInbox());
+    } catch {
+      toast.error("No se pudo cargar el catálogo de motos");
+    } finally {
+      bikesLoadingRef.current = false;
+    }
+  }
 
   useEffect(() => {
     setQueues(initialQueues);
@@ -110,7 +141,7 @@ export function InboxQueuesLive({ initialQueues, bikes }: InboxQueuesLiveProps) 
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setVenderOpen(true)}
+                onClick={() => void openVenderMoto()}
               >
                 <Bike data-icon="inline-start" />
                 Vender moto
@@ -121,15 +152,19 @@ export function InboxQueuesLive({ initialQueues, bikes }: InboxQueuesLiveProps) 
         <BrandLogos />
       </div>
       <QueueCards queues={queues} />
-      <VenderMotoSheet
-        bikes={bikes}
-        open={venderOpen}
-        onOpenChange={setVenderOpen}
-      />
-      <VenderProductosSheet
-        open={productosOpen}
-        onOpenChange={setProductosOpen}
-      />
+      {venderOpen ? (
+        <VenderMotoSheet
+          bikes={catalogoBikes}
+          open={venderOpen}
+          onOpenChange={setVenderOpen}
+        />
+      ) : null}
+      {productosOpen ? (
+        <VenderProductosSheet
+          open={productosOpen}
+          onOpenChange={setProductosOpen}
+        />
+      ) : null}
     </div>
   );
 }

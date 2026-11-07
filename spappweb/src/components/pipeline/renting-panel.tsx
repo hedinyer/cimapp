@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Copy, FileText, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { markMotoRecogida, markMotoRecogidaByUserId, resolveMoroso } from "@/lib/actions/admin-actions";
@@ -98,6 +99,7 @@ function tarifaTieneAbono(tarifa: TarifaPagadaRow): boolean {
 }
 
 export function RentingPanel({ pipeline, userId }: RentingPanelProps) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [capturingExtract, setCapturingExtract] = useState(false);
   const extractRef = useRef<HTMLDivElement>(null);
@@ -296,7 +298,7 @@ export function RentingPanel({ pipeline, userId }: RentingPanelProps) {
             action: {
               label: "Ir a Garaje",
               onClick: () => {
-                window.location.href = "/garaje?fotoPendiente=1";
+                router.push("/garaje?fotoPendiente=1");
               },
             },
           },

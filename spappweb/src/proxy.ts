@@ -10,15 +10,6 @@ import {
   visitadorSessionOptions,
   type VisitadorSessionData,
 } from "@/lib/auth/visitador-session";
-import { createClient as createSupabaseProxyClient } from "@/utils/supabase/middleware";
-
-function redirectWithSupabaseCookies(url: URL, supabaseResponse: NextResponse) {
-  const redirect = NextResponse.redirect(url);
-  supabaseResponse.cookies.getAll().forEach((cookie) => {
-    redirect.cookies.set(cookie);
-  });
-  return redirect;
-}
 
 const adminProtectedPrefixes = [
   "/inbox",
@@ -47,15 +38,8 @@ const visitadorProtectedPrefixes = [
 ];
 
 export async function proxy(request: NextRequest) {
-  const { supabase, supabaseResponse } = createSupabaseProxyClient(request);
-  try {
-    await supabase.auth.getClaims();
-  } catch {
-    // El panel autentica con iron-session; una sesión Auth vacía no bloquea.
-  }
-
   const { pathname } = request.nextUrl;
-  const response = supabaseResponse;
+  const response = NextResponse.next({ request });
 
   const needsAdminSession =
     pathname === "/" ||
@@ -89,45 +73,29 @@ export async function proxy(request: NextRequest) {
   );
 
   if (pathname === "/login" && isAdminLoggedIn) {
-    return redirectWithSupabaseCookies(
-      new URL("/inbox", request.url),
-      supabaseResponse,
-    );
+    return NextResponse.redirect(new URL("/inbox", request.url));
   }
 
   if (pathname === "/visitador/login" && isVisitadorLoggedIn) {
-    return redirectWithSupabaseCookies(
-      new URL("/visitador/mis-visitas", request.url),
-      supabaseResponse,
-    );
+    return NextResponse.redirect(new URL("/visitador/mis-visitas", request.url));
   }
 
   if (pathname === "/hojadevida/login") {
-    return redirectWithSupabaseCookies(
-      new URL("/hojadevida", request.url),
-      supabaseResponse,
-    );
+    return NextResponse.redirect(new URL("/hojadevida", request.url));
   }
 
   if (pathname === "/") {
-    return redirectWithSupabaseCookies(
+    return NextResponse.redirect(
       new URL(isAdminLoggedIn ? "/inbox" : "/login", request.url),
-      supabaseResponse,
     );
   }
 
   if (isAdminProtected && !isAdminLoggedIn) {
-    return redirectWithSupabaseCookies(
-      new URL("/login", request.url),
-      supabaseResponse,
-    );
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   if (isVisitadorProtected && !isVisitadorLoggedIn) {
-    return redirectWithSupabaseCookies(
-      new URL("/visitador/login", request.url),
-      supabaseResponse,
-    );
+    return NextResponse.redirect(new URL("/visitador/login", request.url));
   }
 
   return response;

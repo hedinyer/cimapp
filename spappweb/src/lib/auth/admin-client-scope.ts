@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 /**
  * Admins con vista de clientes limitada a un referral_source.
  *
@@ -87,12 +89,14 @@ export function resolveAdminClientReferralScope(session: {
   return null;
 }
 
-/** null = ve todos los clientes (admin pleno). */
-export async function getAdminClientReferralScope(): Promise<string | null> {
-  try {
-    const { getSession } = await import("@/lib/auth/session");
-    return resolveAdminClientReferralScope(await getSession());
-  } catch {
-    return null;
-  }
-}
+/** null = ve todos los clientes (admin pleno). Una vez por request RSC. */
+export const getAdminClientReferralScope = cache(
+  async (): Promise<string | null> => {
+    try {
+      const { getSession } = await import("@/lib/auth/session");
+      return resolveAdminClientReferralScope(await getSession());
+    } catch {
+      return null;
+    }
+  },
+);

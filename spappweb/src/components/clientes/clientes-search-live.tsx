@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Filter, Loader2, Search, UserPlus, X } from "lucide-react";
 import { searchClientesAction } from "@/lib/actions/clientes-search-actions";
+import { loadClientesMotoCreditoAction } from "@/lib/actions/clientes-list-actions";
 import type { ClientSearchResult } from "@/lib/pipeline/types";
 import {
   COMPRA_FILTER_OPTIONS,
@@ -33,15 +34,22 @@ export function ClientesSearchLive({
   initialQuery,
   initialResults,
   creditClients,
+  hydrateCreditList = false,
   initialShowCreate = false,
 }: {
   initialQuery: string;
   initialResults: ClientSearchResult[];
   creditClients: ClientSearchResult[];
+  /** Si true, carga la cartera en background tras el primer paint. */
+  hydrateCreditList?: boolean;
   initialShowCreate?: boolean;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState(initialResults);
+  const [cartera, setCartera] = useState(creditClients);
+  const [carteraPending, setCarteraPending] = useState(
+    hydrateCreditList && creditClients.length === 0,
+  );
   const [activeQuery, setActiveQuery] = useState(initialQuery);
   const [showCreate, setShowCreate] = useState(initialShowCreate);
   const [filters, setFilters] = useState<ClientesListFilters>(
@@ -50,6 +58,22 @@ export function ClientesSearchLive({
   const [pending, startTransition] = useTransition();
   const reqId = useRef(0);
   const firstRun = useRef(true);
+
+  useEffect(() => {
+    if (!hydrateCreditList) return;
+    let cancelled = false;
+    void loadClientesMotoCreditoAction()
+      .then((rows) => {
+        if (!cancelled) setCartera(rows);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setCarteraPending(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrateCreditList]);
 
   useEffect(() => {
     const q = query.trim();
@@ -91,7 +115,7 @@ export function ClientesSearchLive({
 
   const trimmed = query.trim();
   const searching = activeQuery.trim().length >= 2;
-  const sourceList = searching ? results : creditClients;
+  const sourceList = searching ? results : cartera;
   const filteredList = useMemo(
     () => filterClientSearchResults(sourceList, filters),
     [sourceList, filters],
@@ -110,9 +134,11 @@ export function ClientesSearchLive({
 
   const listTitle = searching
     ? undefined
-    : filtersActive
-      ? `${filteredList.length} de ${creditClients.length} cliente${creditClients.length === 1 ? "" : "s"} · filtros activos`
-      : `${creditClients.length} cliente${creditClients.length === 1 ? "" : "s"} con moto a crédito · vigilados, mora, recogidos, cancelados`;
+    : carteraPending
+      ? "Cargando cartera…"
+      : filtersActive
+        ? `${filteredList.length} de ${cartera.length} cliente${cartera.length === 1 ? "" : "s"} · filtros activos`
+        : `${cartera.length} cliente${cartera.length === 1 ? "" : "s"} con moto a crédito · vigilados, mora, recogidos, cancelados`;
 
   function patchFilter<K extends keyof ClientesListFilters>(
     key: K,

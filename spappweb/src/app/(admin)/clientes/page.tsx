@@ -1,4 +1,4 @@
-﻿import { searchClients, listClientesMotoCredito } from "@/lib/pipeline/queries";
+﻿import { searchClients } from "@/lib/pipeline/queries";
 import { ClientesSearchLive } from "@/components/clientes/clientes-search-live";
 import { PageHeader } from "@/components/layout/page-header";
 
@@ -9,10 +9,9 @@ export default async function ClientesPage({
 }) {
   const { q, nuevo } = await searchParams;
   const query = q?.trim() ?? "";
-  const [results, creditClients] = await Promise.all([
-    query.length >= 2 ? searchClients(query) : Promise.resolve([]),
-    listClientesMotoCredito(),
-  ]);
+  // Solo bloquea si hay búsqueda; la cartera se hidrata en cliente.
+  const results =
+    query.length >= 2 ? await searchClients(query) : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -23,7 +22,8 @@ export default async function ClientesPage({
       <ClientesSearchLive
         initialQuery={query}
         initialResults={results}
-        creditClients={creditClients}
+        creditClients={[]}
+        hydrateCreditList
         initialShowCreate={nuevo === "1"}
       />
     </div>

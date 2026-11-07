@@ -1,14 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { ExternalLink, Power, PowerOff, Radio } from "lucide-react";
 import { toast } from "sonner";
-import {
-  MapaGpsEnVivo,
-  type PuntoRutaGps,
-} from "@/components/pipeline/mapa-gps-en-vivo";
+import type { PuntoRutaGps } from "@/components/pipeline/mapa-gps-en-vivo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const MapaGpsEnVivo = dynamic(
+  () =>
+    import("@/components/pipeline/mapa-gps-en-vivo").then((m) => m.MapaGpsEnVivo),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-48 items-center justify-center bg-muted text-sm text-muted-foreground">
+        Cargando mapa…
+      </div>
+    ),
+  },
+);
 import {
   etiquetaIntervaloPollGps,
   intervaloPollGpsEnVivo,
