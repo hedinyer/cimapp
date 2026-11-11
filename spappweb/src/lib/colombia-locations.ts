@@ -1,7 +1,7 @@
 import { getDepartamentos, getMunicipios } from "colombia-territorial";
 
-export const DEPARTAMENTO_DEFAULT = "Santander";
-export const CIUDAD_DEFAULT = "CONFIGURAR";
+export const DEPARTAMENTO_DEFAULT = "Bolívar";
+export const CIUDAD_DEFAULT = "Cartagena de Indias";
 
 export function listDepartamentos(): string[] {
   return getDepartamentos()
