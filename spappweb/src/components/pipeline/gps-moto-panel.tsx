@@ -193,7 +193,8 @@ export function GpsMotoPanel({
     const hint = leerHintGps(placa, userId);
     deviceIdRef.current = hint?.deviceId ?? 0;
     imeiRef.current = hint?.imei ?? "";
-    gpsMotoHintRef.current = hint?.proveedor ?? "system track";
+    // Sin hint: no fijar proveedor → se consultan System Track y DS Track.
+    gpsMotoHintRef.current = hint?.proveedor ?? "";
     gpsRef.current = null;
     setGps(null);
     setRuta([]);

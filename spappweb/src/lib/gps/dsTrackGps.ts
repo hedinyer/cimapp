@@ -12,8 +12,8 @@ import {
 } from "@/lib/gps/ubicacionGps";
 
 const DSTRACK_BASE_URL = "https://dstrack.uno";
-const DSTRACK_USER = "";
-const DSTRACK_PASSWORD = "";
+const DSTRACK_USER = "solucionespinilla";
+const DSTRACK_PASSWORD = "SPinilla91222";
 const DSTRACK_BASIC = Buffer.from(
   `${DSTRACK_USER}:${DSTRACK_PASSWORD}`,
   "utf8",
